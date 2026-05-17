@@ -1,0 +1,11 @@
+services:
+  huashi:
+    build: .
+    container_name: huashi
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data

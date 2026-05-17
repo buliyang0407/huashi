@@ -1,0 +1,9 @@
+.env
+data/
+logs/
+.superpowers/
+__pycache__/
+*.pyc
+._*
+**/._*
+.DS_Store

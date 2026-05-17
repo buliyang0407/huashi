@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>画室管理</title>
+    <link rel="stylesheet" href="/styles.css?v=20260515-backup1" />
+  </head>
+  <body>
+    <div class="admin-shell">
+      <header class="admin-header">
+        <div>
+          <h1>样式管理</h1>
+          <p>添加或维护 RunningHub 应用</p>
+        </div>
+        <a class="secondary-button" href="/">回到画室</a>
+      </header>
+
+      <main class="admin-layout">
+        <section class="admin-panel">
+          <h2 id="formTitle">添加样式</h2>
+          <form id="styleForm" class="admin-form">
+            <input id="styleId" type="hidden" />
+            <label class="admin-field">
+              样式封面
+              <input id="coverInput" name="cover" type="file" accept="image/*" />
+            </label>
+            <label class="admin-field">
+              RunningHub 链接
+              <input id="sourceUrlInput" name="source_url" type="url" placeholder="粘贴 ai-detail 或 api-detail 链接" />
+            </label>
+            <div class="admin-actions compact">
+              <button class="secondary-button" id="inspectButton" type="button">解析链接</button>
+              <button class="secondary-button" id="clearSampleButton" type="button">清空示例</button>
+            </div>
+            <label class="admin-field">
+              请求示例
+              <textarea id="sampleInput" rows="4" placeholder="可选：私有应用解析不到时，把 RunningHub 文档里的 JSON 请求示例粘这里"></textarea>
+            </label>
+            <div class="admin-grid">
+              <label class="admin-field">
+                样式名称
+                <input id="nameInput" name="name" required />
+              </label>
+              <label class="admin-field">
+                分类
+                <input id="categoryInput" name="category" value="其他" />
+              </label>
+            </div>
+            <label class="admin-field">
+              简短说明
+              <input id="descriptionInput" name="description" placeholder="例如：照片卡通化" />
+            </label>
+            <div class="admin-grid">
+              <label class="admin-field">
+                输出类型
+                <select id="outputTypeInput" name="output_type">
+                  <option value="png">图片 PNG</option>
+                  <option value="jpg">图片 JPG</option>
+                  <option value="webp">图片 WEBP</option>
+                  <option value="zip">ZIP 相册</option>
+                </select>
+              </label>
+              <label class="admin-field">
+                排序
+                <input id="sortOrderInput" name="sort_order" type="number" value="100" />
+              </label>
+            </div>
+            <section class="input-summary">
+              <div class="section-heading">
+                <span>输入项</span>
+                <small>解析链接后自动生成</small>
+              </div>
+              <div id="inputsPreview" class="input-preview empty-state">还没有输入项</div>
+            </section>
+            <details class="advanced-box">
+              <summary>高级接口参数</summary>
+              <div class="admin-grid">
+                <label class="admin-field">
+                  Webapp ID
+                  <input id="webappIdInput" name="webapp_id" required />
+                </label>
+                <label class="admin-field">
+                  主输入节点 ID
+                  <input id="nodeIdInput" name="node_id" />
+                </label>
+              </div>
+              <div class="admin-grid">
+                <label class="admin-field">
+                  主输入字段名
+                  <input id="fieldNameInput" name="field_name" value="image" />
+                </label>
+                <label class="admin-field">
+                  提示词节点 ID
+                  <input id="promptNodeInput" name="prompt_node_id" placeholder="可选" />
+                </label>
+              </div>
+              <label class="admin-field">
+                提示词字段名
+                <input id="promptFieldInput" name="prompt_field_name" placeholder="例如 prompt" />
+              </label>
+              <label class="admin-field">
+                默认提示词
+                <textarea id="defaultPromptInput" name="default_prompt" rows="3"></textarea>
+              </label>
+              <label class="admin-field">
+                输入项 JSON
+                <textarea id="inputsInput" name="inputs" rows="7" placeholder="解析链接后会自动生成；只有特殊情况才需要手动改"></textarea>
+              </label>
+            </details>
+            <div class="admin-grid">
+              <label class="admin-field">
+                主题色
+                <input id="accentInput" name="accent" type="color" value="#6657ff" />
+              </label>
+            </div>
+            <div class="toggle-row">
+              <label><input id="favoriteInput" name="favorite" type="checkbox" /> 常用</label>
+              <label><input id="autoUnzipInput" name="auto_unzip" type="checkbox" /> ZIP 自动解压</label>
+              <label><input id="enabledInput" name="enabled" type="checkbox" checked /> 启用</label>
+            </div>
+            <div id="adminNotice" class="notice hidden"></div>
+            <div class="admin-actions">
+              <button class="primary-button" type="submit">保存样式</button>
+              <button class="secondary-button" id="resetButton" type="button">新建</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="admin-panel">
+          <section class="backup-panel">
+            <div class="section-heading">
+              <span>备份</span>
+              <small>样式配置</small>
+            </div>
+            <div class="backup-actions">
+              <a id="exportBackupButton" class="secondary-button" href="/api/admin/backup" download>导出样式</a>
+              <label class="secondary-button backup-import">
+                导入备份
+                <input id="backupInput" type="file" accept="application/json,.json" />
+              </label>
+            </div>
+            <p>保存样式时会自动在 NAS 留快照。</p>
+          </section>
+          <h2>我的样式</h2>
+          <div id="adminList" class="admin-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin.js?v=20260515-backup1"></script>
+  </body>
+</html>

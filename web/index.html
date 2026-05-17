@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>画室</title>
+    <link rel="stylesheet" href="/styles.css?v=20260515-backup1" />
+  </head>
+  <body>
+    <div id="app" class="phone-shell" data-view="home">
+      <header class="topbar">
+        <button class="ghost-icon back-control" id="backButton" type="button" aria-label="返回">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6" /></svg>
+        </button>
+        <div>
+          <h1 id="pageTitle">画室</h1>
+          <p id="pageHint">样式广场</p>
+        </div>
+        <a class="round-action" href="/admin" aria-label="添加样式">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        </a>
+      </header>
+
+      <main>
+        <section class="screen" data-screen="home">
+          <label class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
+            <input id="searchInput" type="search" placeholder="搜索样式" />
+          </label>
+          <label class="category-select">
+            <span>分类</span>
+            <select id="categorySelect"></select>
+          </label>
+          <section id="favoriteSection" class="style-section" hidden>
+            <div class="section-heading compact"><span>常用</span></div>
+            <div id="favoriteGrid" class="style-grid favorite-grid"></div>
+          </section>
+          <section class="style-section">
+            <div class="section-heading compact"><span id="styleSectionTitle">全部样式</span></div>
+            <div id="styleGrid" class="style-grid"></div>
+          </section>
+        </section>
+
+        <section class="screen" data-screen="compose">
+          <div id="composeCover" class="detail-cover"></div>
+          <div class="detail-copy">
+            <h2 id="composeTitle">选择样式</h2>
+            <p id="composeMeta"></p>
+          </div>
+          <form id="createTaskForm" class="studio-form">
+            <div id="dynamicInputs" class="input-stack"></div>
+            <button class="primary-button" type="submit" id="generateButton" disabled>开始生成</button>
+          </form>
+          <div id="notice" class="notice hidden"></div>
+        </section>
+
+        <section class="screen" data-screen="result">
+          <div id="resultView" class="result-view empty-state">暂无结果</div>
+        </section>
+
+        <section class="screen" data-screen="history">
+          <div class="chip-row">
+            <button class="chip active" type="button" data-history-filter="all">全部</button>
+            <button class="chip" type="button" data-history-filter="success">已完成</button>
+            <button class="chip" type="button" data-history-filter="running">处理中</button>
+            <button class="chip" type="button" data-history-filter="failed">失败</button>
+          </div>
+          <div id="taskList" class="record-list"></div>
+        </section>
+      </main>
+
+      <nav class="bottom-tabs" aria-label="主导航">
+        <button class="bottom-tab active" type="button" data-nav-view="home">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z" /></svg>
+          首页
+        </button>
+        <button class="bottom-tab" type="button" data-nav-view="history">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
+          记录
+        </button>
+        <a class="bottom-tab" href="/admin">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM19.4 15a1.8 1.8 0 0 0 .3 2l.1.1-2 3.4-.2-.1a1.8 1.8 0 0 0-2.1.4l-.1.1h-4l-.1-.1a1.8 1.8 0 0 0-2.1-.4l-.2.1-2-3.4.1-.1a1.8 1.8 0 0 0 .3-2l-.1-.2-2-1.1v-3.4l2-1.1.1-.2a1.8 1.8 0 0 0-.3-2L7 6.9l2-3.4.2.1a1.8 1.8 0 0 0 2.1-.4l.1-.1h4l.1.1a1.8 1.8 0 0 0 2.1.4l.2-.1 2 3.4-.1.1a1.8 1.8 0 0 0-.3 2l.1.2 2 1.1v3.4l-2 1.1Z" /></svg>
+          管理
+        </a>
+      </nav>
+    </div>
+
+    <script src="/app.js?v=20260515-backup1"></script>
+  </body>
+</html>
