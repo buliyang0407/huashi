@@ -1,6 +1,7 @@
 const adminState = {
   apps: [],
   editingId: "",
+  clearCover: false,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -26,7 +27,7 @@ function renderList() {
     button.addEventListener("click", () => editApp(button.dataset.editId));
   });
   document.querySelectorAll("[data-disable-id]").forEach((button) => {
-    button.addEventListener("click", () => disableApp(button.dataset.disableId));
+    button.addEventListener("click", () => deleteApp(button.dataset.disableId));
   });
 }
 
@@ -40,7 +41,7 @@ function appRow(app) {
       </span>
       <span class="admin-row-actions">
         <button class="tiny-button" type="button" data-edit-id="${app.id}">编辑</button>
-        <button class="tiny-button danger" type="button" data-disable-id="${app.id}">停用</button>
+        <button class="tiny-button danger" type="button" data-disable-id="${app.id}">删除</button>
       </span>
     </div>
   `;
@@ -50,6 +51,7 @@ function editApp(id) {
   const app = adminState.apps.find((item) => item.id === id);
   if (!app) return;
   adminState.editingId = app.id;
+  adminState.clearCover = false;
   $("formTitle").textContent = "编辑样式";
   $("styleId").value = app.id;
   $("sourceUrlInput").value = app.source_url || "";
@@ -74,11 +76,11 @@ function editApp(id) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-async function disableApp(id) {
-  if (!confirm("停用这个样式？历史记录不会删除。")) return;
+async function deleteApp(id) {
+  if (!confirm("删除这个应用？历史记录和生成图片会保留，但首页和管理列表里会移除它。")) return;
   try {
     await api(`/api/admin/apps/${id}`, { method: "DELETE" });
-    setNotice("已停用。");
+    setNotice("已删除应用。");
     await loadApps();
   } catch (error) {
     setNotice(error.message, "error");
@@ -87,6 +89,7 @@ async function disableApp(id) {
 
 function resetForm() {
   adminState.editingId = "";
+  adminState.clearCover = false;
   $("formTitle").textContent = "添加样式";
   $("styleForm").reset();
   $("styleId").value = "";
@@ -147,12 +150,13 @@ function formDataFromInputs() {
   formData.append("enabled", $("enabledInput").checked ? "1" : "0");
   const cover = $("coverInput").files[0];
   if (cover) formData.append("cover", cover);
+  if (adminState.clearCover) formData.append("clear_cover", "1");
   return formData;
 }
 
 function coverStyle(app) {
   if (app.cover_url) return `background-image: url('${app.cover_url}')`;
-  return `background: linear-gradient(135deg, ${app.accent || "#6657ff"}, #edf0ff)`;
+  return "background-image: url('/default-app-icon.png')";
 }
 
 function setNotice(message, kind = "info") {
@@ -183,6 +187,16 @@ $("clearSampleButton").addEventListener("click", () => {
   setNotice("");
 });
 
+$("useDefaultCoverButton").addEventListener("click", () => {
+  adminState.clearCover = true;
+  $("coverInput").value = "";
+  setNotice("保存后会使用默认图标。");
+});
+
+$("coverInput").addEventListener("change", () => {
+  if ($("coverInput").files[0]) adminState.clearCover = false;
+});
+
 $("inputsInput").addEventListener("input", renderInputsPreview);
 
 $("styleForm").addEventListener("submit", async (event) => {
@@ -203,6 +217,7 @@ $("styleForm").addEventListener("submit", async (event) => {
 
 $("resetButton").addEventListener("click", resetForm);
 $("backupInput").addEventListener("change", importBackup);
+$("writeBackupButton").addEventListener("click", writeBackup);
 
 loadApps().catch((error) => setNotice(error.message, "error"));
 
@@ -218,13 +233,29 @@ async function importBackup(event) {
   formData.append("backup", file);
   try {
     const { result } = await api("/api/admin/backup/import", { method: "POST", body: formData });
-    setNotice(`已导入 ${result.count} 个样式。`);
+    setNotice(`已导入 ${result.count} 个样式、${result.prompt_count || 0} 条提示词。`);
     resetForm();
     await loadApps();
   } catch (error) {
     setNotice(error.message, "error");
   } finally {
     input.value = "";
+  }
+}
+
+async function writeBackup() {
+  const button = $("writeBackupButton");
+  const oldText = button.textContent;
+  button.disabled = true;
+  button.textContent = "备份中";
+  try {
+    const { backup } = await api("/api/admin/backup/write", { method: "POST" });
+    setNotice(`已备份到 ${backup}`);
+  } catch (error) {
+    setNotice(error.message, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = oldText;
   }
 }
 
@@ -298,10 +329,11 @@ function inputPreviewCard(item) {
   const options = Array.isArray(item.options) && item.options.length
     ? `<small>${item.options.slice(0, 4).map(escapeHtml).join(" / ")}${item.options.length > 4 ? " ..." : ""}</small>`
     : "";
+  const role = item.role === "prompt" ? `<b>提示词框</b>` : "";
   return `
     <div class="input-preview-card">
       <span>${typeLabel(item.type)}</span>
-      <strong>${escapeHtml(item.label || item.fieldName || "输入项")}</strong>
+      <strong>${escapeHtml(item.label || item.fieldName || "输入项")}${role}</strong>
       ${options}
       <em>${escapeHtml(item.nodeId || "")} · ${escapeHtml(item.fieldName || "")}</em>
     </div>
@@ -310,6 +342,8 @@ function inputPreviewCard(item) {
 
 function typeLabel(type) {
   return {
+    checkbox: "开关",
+    hidden: "隐藏",
     image: "图片",
     file: "文件",
     textarea: "文本",

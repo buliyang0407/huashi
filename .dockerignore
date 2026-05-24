@@ -1,5 +1,6 @@
 .env
 data/
+pose/
 logs/
 .superpowers/
 __pycache__/

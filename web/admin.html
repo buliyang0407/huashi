@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>画室管理</title>
-    <link rel="stylesheet" href="/styles.css?v=20260515-backup1" />
+    <link rel="stylesheet" href="/styles.css?v=20260523-pose2" />
   </head>
   <body>
     <div class="admin-shell">
@@ -25,6 +25,9 @@
               样式封面
               <input id="coverInput" name="cover" type="file" accept="image/*" />
             </label>
+            <div class="admin-actions compact">
+              <button class="secondary-button" id="useDefaultCoverButton" type="button">使用默认图标</button>
+            </div>
             <label class="admin-field">
               RunningHub 链接
               <input id="sourceUrlInput" name="source_url" type="url" placeholder="粘贴 ai-detail 或 api-detail 链接" />
@@ -131,16 +134,17 @@
           <section class="backup-panel">
             <div class="section-heading">
               <span>备份</span>
-              <small>样式配置</small>
+              <small>样式和提示词</small>
             </div>
             <div class="backup-actions">
-              <a id="exportBackupButton" class="secondary-button" href="/api/admin/backup" download>导出样式</a>
+              <button id="writeBackupButton" class="secondary-button" type="button">备份到NAS</button>
+              <a id="exportBackupButton" class="secondary-button" href="/api/admin/backup" download>导出全量</a>
               <label class="secondary-button backup-import">
                 导入备份
                 <input id="backupInput" type="file" accept="application/json,.json" />
               </label>
             </div>
-            <p>保存样式时会自动在 NAS 留快照。</p>
+            <p>保存样式、提示词和 AI 衍生提示词时会自动留快照，也可以手动写入 NAS 备份目录。</p>
           </section>
           <h2>我的样式</h2>
           <div id="adminList" class="admin-list"></div>
@@ -148,6 +152,6 @@
       </main>
     </div>
 
-    <script src="/admin.js?v=20260515-backup1"></script>
+    <script src="/admin.js?v=20260523-pose2"></script>
   </body>
 </html>

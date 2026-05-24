@@ -76,6 +76,29 @@ class RunningHubInspectorTest(unittest.TestCase):
         self.assertEqual(result.inputs[1]["type"], "select")
         self.assertEqual(result.inputs[1]["options"], ["auto", "1:1", "4:3"])
 
+    def test_parse_optional_images_and_inferred_select_options(self):
+        result = parse_runninghub_text(
+            """
+            {
+              "nodeInfoList": [
+                {"nodeId": "2", "fieldName": "image", "fieldType": "IMAGE", "description": "上传图像 1 【选填】", "fieldValue": "demo.png"},
+                {"nodeId": "3", "fieldName": "image", "fieldType": "IMAGE", "description": "上传图像 2", "fieldValue": "demo2.png"},
+                {"nodeId": "1", "fieldName": "resolution", "fieldType": "LIST", "description": "分辨率", "fieldValue": "2k"},
+                {"nodeId": "5", "fieldName": "enabled", "fieldType": "BOOLEAN", "description": "是否压缩", "fieldValue": "false"},
+                {"nodeId": "6", "fieldName": "select", "fieldType": "STRING", "description": "加密方式", "fieldValue": "2"}
+              ]
+            }
+            """
+        )
+
+        self.assertFalse(result.inputs[0]["required"])
+        self.assertFalse(result.inputs[1]["required"])
+        self.assertEqual(result.inputs[0]["options"], [])
+        self.assertEqual(result.inputs[2]["options"], ["1k", "2k", "4k"])
+        self.assertEqual(result.inputs[3]["type"], "checkbox")
+        self.assertEqual(result.inputs[4]["type"], "select")
+        self.assertEqual(result.inputs[4]["options"], ["2"])
+
     def test_inspect_uses_sample_as_private_page_fallback(self):
         result = inspect_runninghub_source(
             "https://www.runninghub.cn/ai-detail/123456",

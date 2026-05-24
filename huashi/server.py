@@ -13,6 +13,7 @@ from urllib.parse import unquote, urlparse
 
 from .runninghub_inspector import RunningHubInspectError, inspect_runninghub_source
 from .runninghub import RunningHubClient, RunningHubError
+from .prompt_ai import PromptAIError, list_prompt_models
 from .service import HuashiService
 from .storage import HuashiStore
 
@@ -58,11 +59,42 @@ def make_handler(service: HuashiService, web_root: Path, data_root: Path):
                 self.json_response({"apps": service.store.list_all_apps()})
                 return
             if path == "/api/admin/backup":
-                filename = f"huashi-apps-{service.export_apps_bundle()['exported_at'][:10]}.json"
+                filename = f"huashi-backup-{service.export_apps_bundle()['exported_at'][:10]}.json"
                 self.json_download_response(service.export_apps_bundle(), filename)
                 return
             if path == "/api/tasks":
                 self.json_response({"tasks": service.store.list_tasks()})
+                return
+            if path == "/api/albums":
+                folders = service.store.list_album_folders()
+                pose = service.pose_summary()
+                if pose:
+                    folders.append(pose)
+                self.json_response({"folders": folders})
+                return
+            if path == "/api/albums/items":
+                query = self.query_params()
+                self.json_response({"items": service.store.list_album_items(query.get("folder_id") or "works")})
+                return
+            if path == "/api/pose":
+                query = self.query_params()
+                try:
+                    self.json_response(
+                        service.list_pose_directory(
+                            query.get("path") or "",
+                            int(query.get("offset") or 0),
+                            int(query.get("limit") or 120),
+                        )
+                    )
+                except ValueError as exc:
+                    self.error_response(HTTPStatus.BAD_REQUEST, str(exc))
+                return
+            if path == "/api/prompts":
+                query = self.query_params()
+                self.json_response({"prompts": service.store.list_prompts(app_id=query.get("app_id") or None)})
+                return
+            if path == "/api/prompt-models":
+                self.json_response({"models": list_prompt_models()})
                 return
             if path.startswith("/api/tasks/"):
                 task_id = path.rstrip("/").split("/")[-1]
@@ -70,6 +102,9 @@ def make_handler(service: HuashiService, web_root: Path, data_root: Path):
                 return
             if path.startswith("/files/"):
                 self.serve_data_file(path.removeprefix("/files/"))
+                return
+            if path.startswith("/pose-files/"):
+                self.serve_pose_file(path.removeprefix("/pose-files/"))
                 return
             self.serve_static(path)
 
@@ -87,6 +122,62 @@ def make_handler(service: HuashiService, web_root: Path, data_root: Path):
             if path == "/api/admin/backup/import":
                 self.handle_import_backup()
                 return
+            if path == "/api/admin/backup/write":
+                backup_path = service.write_apps_backup("manual")
+                self.json_response({"backup": service._rel(backup_path)})
+                return
+            if path == "/api/albums":
+                self.handle_create_album_folder()
+                return
+            if path == "/api/albums/upload":
+                self.handle_album_upload()
+                return
+            if path.startswith("/api/albums/items/") and path.endswith("/move"):
+                item_id = path.split("/")[-2]
+                self.handle_album_item_move(item_id)
+                return
+            if path.startswith("/api/albums/items/") and path.endswith("/reorder"):
+                item_id = path.split("/")[-2]
+                self.handle_album_item_reorder(item_id)
+                return
+            if path.startswith("/api/albums/items/") and path.endswith("/position"):
+                item_id = path.split("/")[-2]
+                self.handle_album_item_position(item_id)
+                return
+            if path.startswith("/api/albums/items/") and path.endswith("/delete"):
+                item_id = path.split("/")[-2]
+                self.json_response({"item": service.store.soft_delete_album_item(item_id)})
+                return
+            if path == "/api/prompts":
+                self.handle_save_prompt()
+                return
+            if path == "/api/prompts/rewrite":
+                self.handle_prompt_rewrite()
+                return
+            if path == "/api/prompts/translate":
+                self.handle_prompt_translate()
+                return
+            if path == "/api/prompt-agent/analyze":
+                self.handle_prompt_agent_analyze()
+                return
+            if path == "/api/prompt-agent/generate":
+                self.handle_prompt_agent_generate()
+                return
+            if path == "/api/prompt-agent/refine":
+                self.handle_prompt_agent_refine()
+                return
+            if path.startswith("/api/prompts/") and path.endswith("/use"):
+                prompt_id = path.split("/")[-2]
+                self.json_response({"prompt": service.store.mark_prompt_used(prompt_id)})
+                return
+            if path.startswith("/api/prompts/") and path.endswith("/variants"):
+                prompt_id = path.split("/")[-2]
+                self.handle_save_prompt_variant(prompt_id)
+                return
+            if path.startswith("/api/prompt-variants/") and path.endswith("/use"):
+                variant_id = path.split("/")[-2]
+                self.json_response({"prompt": service.store.mark_prompt_variant_used(variant_id)})
+                return
             if path.startswith("/api/tasks/") and path.endswith("/archive"):
                 task_id = path.split("/")[-2]
                 self.json_response({"task": service.archive_task(task_id)})
@@ -94,6 +185,14 @@ def make_handler(service: HuashiService, web_root: Path, data_root: Path):
             if path.startswith("/api/tasks/") and path.endswith("/retry"):
                 task_id = path.split("/")[-2]
                 self.json_response({"task": service.retry_task(task_id)})
+                return
+            if path.startswith("/api/tasks/") and path.endswith("/outputs/blur"):
+                task_id = path.split("/")[-3]
+                self.handle_task_output_blur(task_id)
+                return
+            if path.startswith("/api/tasks/") and path.endswith("/outputs/delete"):
+                task_id = path.split("/")[-3]
+                self.handle_task_output_delete(task_id)
                 return
             self.error_response(HTTPStatus.NOT_FOUND, "Not found")
 
@@ -103,18 +202,30 @@ def make_handler(service: HuashiService, web_root: Path, data_root: Path):
                 app_id = path.rstrip("/").split("/")[-1]
                 self.handle_save_app(app_id)
                 return
+            if path.startswith("/api/prompts/"):
+                prompt_id = path.rstrip("/").split("/")[-1]
+                self.handle_save_prompt(prompt_id)
+                return
             self.error_response(HTTPStatus.NOT_FOUND, "Not found")
 
         def do_DELETE(self):
             path = urlparse(self.path).path
             if path.startswith("/api/admin/apps/"):
                 app_id = path.rstrip("/").split("/")[-1]
-                self.json_response({"app": service.store.disable_app(app_id)})
+                self.json_response({"app": service.store.delete_app(app_id)})
                 return
             if path.startswith("/api/tasks/"):
                 task_id = path.rstrip("/").split("/")[-1]
                 service.delete_task(task_id)
                 self.json_response({"ok": True})
+                return
+            if path.startswith("/api/prompts/"):
+                prompt_id = path.rstrip("/").split("/")[-1]
+                self.json_response({"prompt": service.store.soft_delete_prompt(prompt_id)})
+                return
+            if path.startswith("/api/prompt-variants/"):
+                variant_id = path.rstrip("/").split("/")[-1]
+                self.json_response({"prompt": service.store.soft_delete_prompt_variant(variant_id)})
                 return
             self.error_response(HTTPStatus.NOT_FOUND, "Not found")
 
@@ -140,6 +251,8 @@ def make_handler(service: HuashiService, web_root: Path, data_root: Path):
                 data = {**current, **data}
             cover = files.get("cover")
             target_id = app_id or data.get("id") or ""
+            if str(data.get("clear_cover") or "").lower() in {"1", "true", "yes", "on"}:
+                data["cover_path"] = ""
             if cover and target_id:
                 data["cover_path"] = service.save_cover(
                     target_id,
@@ -152,6 +265,45 @@ def make_handler(service: HuashiService, web_root: Path, data_root: Path):
                 app = service.store.save_app({**app, "cover_path": cover_path}, app_id=app["id"])
             self.safe_write_backup("save")
             self.json_response({"app": app}, status=HTTPStatus.CREATED if app_id is None else HTTPStatus.OK)
+
+        def handle_create_album_folder(self):
+            data = self.parse_json_body()
+            self.json_response({"folder": service.store.create_album_folder(str(data.get("name") or ""))}, status=HTTPStatus.CREATED)
+
+        def handle_album_upload(self):
+            fields, files = self.parse_multipart()
+            upload = files.get("image")
+            if not upload:
+                self.error_response(HTTPStatus.BAD_REQUEST, "请选择要上传的图片")
+                return
+            folder_id = (fields.get("folder_id") or "works").strip() or "works"
+            item = service.save_album_upload(folder_id, str(upload["filename"]), upload["content"])  # type: ignore[arg-type]
+            self.json_response({"item": item}, status=HTTPStatus.CREATED)
+
+        def handle_album_item_move(self, item_id: str):
+            data = self.parse_json_body()
+            folder_id = str(data.get("folder_id") or "").strip()
+            if not folder_id:
+                self.error_response(HTTPStatus.BAD_REQUEST, "缺少目标文件夹")
+                return
+            self.json_response({"item": service.store.move_album_item(item_id, folder_id)})
+
+        def handle_album_item_reorder(self, item_id: str):
+            data = self.parse_json_body()
+            direction = str(data.get("direction") or "").strip()
+            if direction not in {"up", "down"}:
+                self.error_response(HTTPStatus.BAD_REQUEST, "排序方向不正确")
+                return
+            self.json_response({"item": service.store.reorder_album_item(item_id, direction)})
+
+        def handle_album_item_position(self, item_id: str):
+            data = self.parse_json_body()
+            try:
+                to_index = int(data.get("to_index"))
+            except (TypeError, ValueError):
+                self.error_response(HTTPStatus.BAD_REQUEST, "目标位置不正确")
+                return
+            self.json_response({"item": service.store.position_album_item(item_id, to_index)})
 
         def handle_inspect_runninghub(self):
             try:
@@ -177,6 +329,120 @@ def make_handler(service: HuashiService, web_root: Path, data_root: Path):
                 self.json_response({"result": result})
             except (json.JSONDecodeError, UnicodeDecodeError):
                 self.error_response(HTTPStatus.BAD_REQUEST, "备份文件不是有效 JSON")
+            except ValueError as exc:
+                self.error_response(HTTPStatus.BAD_REQUEST, str(exc))
+
+        def handle_save_prompt(self, prompt_id: str | None = None):
+            try:
+                if "application/json" in self.headers.get("Content-Type", ""):
+                    data = self.parse_json_body()
+                else:
+                    fields, _files = self.parse_multipart()
+                    data = {key: value for key, value in fields.items()}
+                prompt = service.store.save_prompt(data, prompt_id=prompt_id)
+                self.safe_write_backup("prompt-save")
+                self.json_response({"prompt": prompt}, status=HTTPStatus.CREATED if prompt_id is None else HTTPStatus.OK)
+            except ValueError as exc:
+                self.error_response(HTTPStatus.BAD_REQUEST, str(exc))
+
+        def handle_prompt_rewrite(self):
+            try:
+                data = self.parse_json_body()
+                self.stream_jsonl_response(
+                    service.rewrite_prompt_stream(
+                        original_prompt=str(data.get("prompt") or ""),
+                        edit_idea=str(data.get("idea") or ""),
+                        model_id=str(data.get("model") or ""),
+                        count=int(data.get("count") or 3),
+                    )
+                )
+            except (ValueError, PromptAIError) as exc:
+                self.error_response(HTTPStatus.BAD_REQUEST, str(exc))
+
+        def handle_prompt_translate(self):
+            try:
+                data = self.parse_json_body()
+                self.stream_jsonl_response(
+                    service.translate_prompt_stream(
+                        prompt=str(data.get("prompt") or ""),
+                        model_id=str(data.get("model") or ""),
+                    )
+                )
+            except (ValueError, PromptAIError) as exc:
+                self.error_response(HTTPStatus.BAD_REQUEST, str(exc))
+
+        def handle_prompt_agent_analyze(self):
+            try:
+                data = self.parse_json_body()
+                result = service.analyze_prompt_agent(
+                    prompt=str(data.get("prompt") or ""),
+                    model_id=str(data.get("model") or ""),
+                )
+                self.json_response(result)
+            except (ValueError, PromptAIError) as exc:
+                self.error_response(HTTPStatus.BAD_REQUEST, str(exc))
+
+        def handle_prompt_agent_generate(self):
+            try:
+                data = self.parse_json_body()
+                result = service.generate_prompt_agent(
+                    prompt=str(data.get("prompt") or ""),
+                    analysis=data.get("analysis") if isinstance(data.get("analysis"), dict) else {},
+                    instruction=str(data.get("instruction") or ""),
+                    model_id=str(data.get("model") or ""),
+                )
+                self.json_response(result)
+            except (ValueError, PromptAIError) as exc:
+                self.error_response(HTTPStatus.BAD_REQUEST, str(exc))
+
+        def handle_prompt_agent_refine(self):
+            try:
+                data = self.parse_json_body()
+                result = service.refine_prompt_agent(
+                    prompt=str(data.get("prompt") or ""),
+                    analysis=data.get("analysis") if isinstance(data.get("analysis"), dict) else {},
+                    current=data.get("current") if isinstance(data.get("current"), dict) else {},
+                    instruction=str(data.get("instruction") or ""),
+                    model_id=str(data.get("model") or ""),
+                )
+                self.json_response(result)
+            except (ValueError, PromptAIError) as exc:
+                self.error_response(HTTPStatus.BAD_REQUEST, str(exc))
+
+        def handle_save_prompt_variant(self, prompt_id: str):
+            try:
+                data = self.parse_json_body()
+                prompt = service.store.save_prompt_variant(prompt_id, data)
+                self.safe_write_backup("prompt-variant")
+                self.json_response({"prompt": prompt}, status=HTTPStatus.CREATED)
+            except ValueError as exc:
+                self.error_response(HTTPStatus.BAD_REQUEST, str(exc))
+
+        def handle_task_output_blur(self, task_id: str):
+            try:
+                data = self.parse_json_body()
+                task = service.store.set_task_output_blurred(
+                    task_id,
+                    str(data.get("path") or ""),
+                    bool(data.get("blurred")),
+                )
+                self.json_response({"task": task})
+            except KeyError as exc:
+                self.error_response(HTTPStatus.NOT_FOUND, str(exc))
+            except ValueError as exc:
+                self.error_response(HTTPStatus.BAD_REQUEST, str(exc))
+
+        def handle_task_output_delete(self, task_id: str):
+            try:
+                data = self.parse_json_body()
+                task = service.store.set_task_output_deleted(
+                    task_id,
+                    str(data.get("path") or ""),
+                    True,
+                )
+                self.json_response({"task": task})
+            except KeyError as exc:
+                self.error_response(HTTPStatus.NOT_FOUND, str(exc))
             except ValueError as exc:
                 self.error_response(HTTPStatus.BAD_REQUEST, str(exc))
 
@@ -214,6 +480,16 @@ def make_handler(service: HuashiService, web_root: Path, data_root: Path):
             raw = self.rfile.read(length)
             return json.loads(raw.decode("utf-8") or "{}")
 
+        def query_params(self):
+            parsed = urlparse(self.path)
+            params = {}
+            for part in parsed.query.split("&"):
+                if not part or "=" not in part:
+                    continue
+                key, value = part.split("=", 1)
+                params[unquote(key)] = unquote(value)
+            return params
+
         def serve_data_file(self, rel_url_path: str):
             rel_path = Path(unquote(rel_url_path))
             target = (data_root / rel_path).resolve()
@@ -227,6 +503,22 @@ def make_handler(service: HuashiService, web_root: Path, data_root: Path):
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", self.guess_type(str(target)))
             self.send_header("Content-Length", str(target.stat().st_size))
+            self.send_header("Cache-Control", "public, max-age=2592000, immutable")
+            self.end_headers()
+            with target.open("rb") as handle:
+                self.copyfile(handle, self.wfile)
+
+        def serve_pose_file(self, rel_url_path: str):
+            try:
+                target = service.resolve_pose_path(unquote(rel_url_path))
+            except ValueError as exc:
+                self.error_response(HTTPStatus.NOT_FOUND, str(exc))
+                return
+            self.path = str(target)
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", self.guess_type(str(target)))
+            self.send_header("Content-Length", str(target.stat().st_size))
+            self.send_header("Cache-Control", "public, max-age=2592000, immutable")
             self.end_headers()
             with target.open("rb") as handle:
                 self.copyfile(handle, self.wfile)
@@ -243,6 +535,8 @@ def make_handler(service: HuashiService, web_root: Path, data_root: Path):
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", self.guess_type(str(target)))
             self.send_header("Content-Length", str(target.stat().st_size))
+            if target.name not in {"index.html", "admin.html"}:
+                self.send_header("Cache-Control", "public, max-age=604800")
             self.end_headers()
             with target.open("rb") as handle:
                 self.copyfile(handle, self.wfile)
@@ -263,6 +557,21 @@ def make_handler(service: HuashiService, web_root: Path, data_root: Path):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+
+        def stream_jsonl_response(self, events):
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            try:
+                for event in events:
+                    body = (json.dumps(event, ensure_ascii=False) + "\n").encode("utf-8")
+                    self.wfile.write(body)
+                    self.wfile.flush()
+            except PromptAIError as exc:
+                body = (json.dumps({"type": "error", "message": str(exc)}, ensure_ascii=False) + "\n").encode("utf-8")
+                self.wfile.write(body)
+                self.wfile.flush()
 
         def error_response(self, status, message):
             self.json_response({"error": message}, status=status)

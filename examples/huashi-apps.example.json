@@ -1,893 +1,901 @@
 {
-    "kind": "huashi-apps-backup",
-    "version": 1,
-    "exported_at": "2026-05-17T01:55:15.776498+00:00",
-    "apps": [
+  "kind": "huashi-backup",
+  "version": 2,
+  "exported_at": "2026-05-17T01:55:15.776498+00:00",
+  "apps": [
+    {
+      "id": "effect-png",
+      "name": "3D微缩模型转换器",
+      "description": "微缩模型",
+      "webapp_id": "2014608238859259906",
+      "node_id": "3",
+      "field_name": "image",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "风格",
+      "favorite": false,
+      "accent": "#8fb1ff",
+      "enabled": true,
+      "cover_path": "covers/effect-png/cover.jpg",
+      "source_url": "https://www.runninghub.cn/ai-detail/2014608238859259906",
+      "prompt_node_id": "",
+      "prompt_field_name": "",
+      "default_prompt": "",
+      "sort_order": 10,
+      "inputs": [
         {
-            "id": "effect-png",
-            "name": "3D\u5fae\u7f29\u6a21\u578b\u8f6c\u6362\u5668",
-            "description": "\u5fae\u7f29\u6a21\u578b",
-            "webapp_id": "2014608238859259906",
-            "node_id": "3",
-            "field_name": "image",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u98ce\u683c",
-            "favorite": false,
-            "accent": "#8fb1ff",
-            "enabled": true,
-            "cover_path": "covers/effect-png/cover.jpg",
-            "source_url": "https://www.runninghub.cn/ai-detail/2014608238859259906",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 10,
-            "inputs": [
-                {
-                    "id": "image",
-                    "nodeId": "3",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "\u56fe\u7247",
-                    "required": true,
-                    "defaultValue": "",
-                    "options": []
-                }
-            ]
-        },
-        {
-            "id": "private-zip",
-            "name": "\u9ad8\u7ea7\u6362\u88c5",
-            "description": "\u4eba\u7269\u6362\u88c5",
-            "webapp_id": "2054095300863774721",
-            "node_id": "191",
-            "field_name": "image",
-            "input_type": "image",
-            "output_type": "zip",
-            "auto_unzip": true,
-            "category": "\u6362\u88c5",
-            "favorite": true,
-            "accent": "#8a5cf6",
-            "enabled": true,
-            "cover_path": "covers/private-zip/cover.jpg",
-            "source_url": "https://www.runninghub.cn/ai-detail/2054095300863774721",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 20,
-            "inputs": [
-                {
-                    "id": "image",
-                    "nodeId": "191",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "\u56fe\u7247",
-                    "required": true,
-                    "defaultValue": "",
-                    "options": []
-                }
-            ]
-        },
-        {
-            "id": "cf3bd649782046e89def0d534db1c04e",
-            "name": "\u6bdb\u6be1\u753b\u98ce",
-            "description": "\u628a\u56fe\u7247\u6539\u6210\u6bdb\u6be1\u98ce\u683c",
-            "webapp_id": "2014521221399973890",
-            "node_id": "3",
-            "field_name": "image",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u98ce\u683c",
-            "favorite": false,
-            "accent": "#08d456",
-            "enabled": true,
-            "cover_path": "covers/cf3bd649782046e89def0d534db1c04e/cover.jpg",
-            "source_url": "https://www.runninghub.cn/ai-detail/2014521221399973890",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "image",
-                    "nodeId": "3",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "\u56fe\u7247",
-                    "required": true,
-                    "defaultValue": "",
-                    "options": []
-                }
-            ]
-        },
-        {
-            "id": "27c9b0e76d334aa981c9e9d2b524b5f3",
-            "name": "\u7535\u5f71\u611f",
-            "description": "image",
-            "webapp_id": "2008912728567582722",
-            "node_id": "3",
-            "field_name": "image",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u98ce\u683c",
-            "favorite": false,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "covers/27c9b0e76d334aa981c9e9d2b524b5f3/cover.jpg",
-            "source_url": "https://www.runninghub.cn/ai-detail/2008912728567582722",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "image",
-                    "nodeId": "3",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "\u56fe\u7247",
-                    "required": true,
-                    "defaultValue": "",
-                    "options": []
-                }
-            ]
-        },
-        {
-            "id": "a7c11395a4764bd58f9f81392cea6a72",
-            "name": "\u5730\u6807\u535a\u7269\u9986",
-            "description": "image",
-            "webapp_id": "2004896299734495234",
-            "node_id": "3",
-            "field_name": "image",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u8bbe\u8ba1",
-            "favorite": false,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "covers/a7c11395a4764bd58f9f81392cea6a72/cover.jpg",
-            "source_url": "https://www.runninghub.cn/ai-detail/2004896299734495234",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "field_1",
-                    "nodeId": "3",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "image",
-                    "required": true,
-                    "defaultValue": "7e57e4edc25936bee07e9fd196afcff9c8d0a57801bac837cada931f991304f6.jpeg",
-                    "options": [
-                        "example.png",
-                        "keep_this_dic"
-                    ]
-                },
-                {
-                    "id": "field_2",
-                    "nodeId": "2",
-                    "fieldName": "resolution",
-                    "type": "select",
-                    "label": "resolution",
-                    "required": true,
-                    "defaultValue": "1k",
-                    "options": [
-                        "1k",
-                        "2k",
-                        "4k",
-                        "8k (Official only)"
-                    ]
-                },
-                {
-                    "id": "field_3",
-                    "nodeId": "2",
-                    "fieldName": "aspectRatio",
-                    "type": "select",
-                    "label": "aspectRatio",
-                    "required": true,
-                    "defaultValue": "auto",
-                    "options": [
-                        "auto",
-                        "1:1",
-                        "2:3",
-                        "3:2",
-                        "3:4",
-                        "4:3",
-                        "4:5",
-                        "5:4",
-                        "9:16",
-                        "16:9",
-                        "21:9"
-                    ]
-                },
-                {
-                    "id": "field_4",
-                    "nodeId": "2",
-                    "fieldName": "channel",
-                    "type": "select",
-                    "label": "channel",
-                    "required": true,
-                    "defaultValue": "Third-party",
-                    "options": [
-                        "Third-party",
-                        "Official"
-                    ]
-                }
-            ]
-        },
-        {
-            "id": "d5826bb9b03240198c13935bc5f766ed",
-            "name": "\u5de5\u4e1a\u62c6\u89e3",
-            "description": "image",
-            "webapp_id": "2011792424443584513",
-            "node_id": "21",
-            "field_name": "image",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u8bbe\u8ba1",
-            "favorite": false,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "covers/d5826bb9b03240198c13935bc5f766ed/cover.jpg",
-            "source_url": "https://www.runninghub.cn/ai-detail/2011792424443584513",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "field_1",
-                    "nodeId": "21",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "image",
-                    "required": true,
-                    "defaultValue": "055d08cb826e55e97dbcf5473d878d779315a063b4726eb7aab4075595a634f9.jpg",
-                    "options": [
-                        "example.png",
-                        "keep_this_dic"
-                    ]
-                }
-            ]
-        },
-        {
-            "id": "e8cd5fb8c4f84d8ca8e78d3b284cf072",
-            "name": "\u5fae\u89c2\u57ce\u5e02",
-            "description": "\u7269\u54c1",
-            "webapp_id": "2012046144641179649",
-            "node_id": "13",
-            "field_name": "value",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u8bbe\u8ba1",
-            "favorite": false,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "covers/e8cd5fb8c4f84d8ca8e78d3b284cf072/cover.jpg",
-            "source_url": "https://www.runninghub.cn/ai-detail/2012046144641179649",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "field_1",
-                    "nodeId": "13",
-                    "fieldName": "value",
-                    "type": "textarea",
-                    "label": "\u7269\u54c1",
-                    "required": true,
-                    "defaultValue": "\u53d1\u7535\u673a",
-                    "options": []
-                },
-                {
-                    "id": "field_2",
-                    "nodeId": "14",
-                    "fieldName": "value",
-                    "type": "textarea",
-                    "label": "\u57ce\u5e02",
-                    "required": true,
-                    "defaultValue": "\u67cf\u6797",
-                    "options": []
-                },
-                {
-                    "id": "field_3",
-                    "nodeId": "2",
-                    "fieldName": "aspectRatio",
-                    "type": "select",
-                    "label": "\u56fe\u7247\u6bd4\u4f8b",
-                    "required": true,
-                    "defaultValue": "auto",
-                    "options": [
-                        "auto",
-                        "1:1",
-                        "2:3",
-                        "3:2",
-                        "3:4",
-                        "4:3",
-                        "4:5",
-                        "5:4",
-                        "9:16",
-                        "16:9",
-                        "21:9"
-                    ]
-                }
-            ]
-        },
-        {
-            "id": "49a8e706871e4b76a3d0cd43082bfe26",
-            "name": "\u660e\u661f\u6d77\u62a5",
-            "description": "default_value",
-            "webapp_id": "2010275996641009665",
-            "node_id": "20",
-            "field_name": "default_value",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u8bbe\u8ba1",
-            "favorite": false,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "covers/49a8e706871e4b76a3d0cd43082bfe26/cover.jpg",
-            "source_url": "https://www.runninghub.cn/ai-detail/2010275996641009665",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "field_1",
-                    "nodeId": "20",
-                    "fieldName": "default_value",
-                    "type": "textarea",
-                    "label": "default_value",
-                    "required": true,
-                    "defaultValue": "\u8fc8\u514b\u5c14\u8212\u9a6c\u8d6b",
-                    "options": []
-                },
-                {
-                    "id": "field_2",
-                    "nodeId": "2",
-                    "fieldName": "aspectRatio",
-                    "type": "select",
-                    "label": "aspectRatio",
-                    "required": true,
-                    "defaultValue": "3:4",
-                    "options": [
-                        "auto",
-                        "1:1",
-                        "2:3",
-                        "3:2",
-                        "3:4",
-                        "4:3",
-                        "4:5",
-                        "5:4",
-                        "9:16",
-                        "16:9",
-                        "21:9"
-                    ]
-                }
-            ]
-        },
-        {
-            "id": "a3936184bf644f00a3b7ac5e06557289",
-            "name": "\u56fe\u7247\u53bb\u6c34\u5370",
-            "description": "image",
-            "webapp_id": "2053828043508076545",
-            "node_id": "17",
-            "field_name": "image",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": true,
-            "category": "\u5176\u4ed6",
-            "favorite": false,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "",
-            "source_url": "https://www.runninghub.cn/ai-detail/2053828043508076545",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "field_1",
-                    "nodeId": "17",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "image",
-                    "required": true,
-                    "defaultValue": "example.png",
-                    "options": [
-                        "example.png",
-                        "None",
-                        "example.png",
-                        "keep_this_dic"
-                    ]
-                }
-            ]
-        },
-        {
-            "id": "4ac618dbfb404e0dbbfd2c5f98e1bdeb",
-            "name": "\u4e00\u952e\u6362\u88c5",
-            "description": "\u6a21\u7279\u56fe",
-            "webapp_id": "2012848202482978818",
-            "node_id": "107",
-            "field_name": "image",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u6362\u88c5",
-            "favorite": false,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "covers/4ac618dbfb404e0dbbfd2c5f98e1bdeb/cover.jpg",
-            "source_url": "https://www.runninghub.cn/ai-detail/2012848202482978818",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "field_1",
-                    "nodeId": "107",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "\u6a21\u7279\u56fe",
-                    "required": true,
-                    "defaultValue": "pasted/b3d4155904898bf44d38faa464bca2d2bf5ce85301f29f4109143a7ffb77eab8.png",
-                    "options": [
-                        "example.png",
-                        "keep_this_dic"
-                    ]
-                },
-                {
-                    "id": "field_2",
-                    "nodeId": "285",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "\u66ff\u6362\u8863\u7269\u56fe",
-                    "required": true,
-                    "defaultValue": "pasted/966328a757f6c17207ffbe7b2975e094fb064f3df982b1290f0cc00674b8a931.png",
-                    "options": [
-                        "example.png",
-                        "keep_this_dic"
-                    ]
-                },
-                {
-                    "id": "field_3",
-                    "nodeId": "223",
-                    "fieldName": "value",
-                    "type": "textarea",
-                    "label": "\u63d0\u793a\u8bcd",
-                    "required": true,
-                    "defaultValue": "\u8ba9\u56fe\u4e00\u7684\u4eba\u7269\u7a7f\u4e0a\u56fe\u4e8c\u7684\u8863\u670d",
-                    "options": []
-                }
-            ]
-        },
-        {
-            "id": "0d842e805321422291e856d461c3d9bf",
-            "name": "\u4e07\u7269\u91cd\u6253\u5149\uff08\u9ad8\u7ea7\uff09",
-            "description": "Qwen-edit - \u8d35",
-            "webapp_id": "1964753754237095937",
-            "node_id": "19",
-            "field_name": "image",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u5176\u4ed6",
-            "favorite": false,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "",
-            "source_url": "https://www.runninghub.cn/ai-detail/1964753754237095937",
-            "prompt_node_id": "25",
-            "prompt_field_name": "text",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "field_1",
-                    "nodeId": "19",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "\u56fe\u7247\u66ff\u6362",
-                    "required": true,
-                    "defaultValue": "51b8c742a34a6bde76d6c25cec59a711198e4ebc8918b5b18beb08f3c6f99a78.jpg",
-                    "options": [
-                        "example.png",
-                        "keep_this_dic"
-                    ]
-                },
-                {
-                    "id": "field_2",
-                    "nodeId": "25",
-                    "fieldName": "text",
-                    "type": "textarea",
-                    "label": "\u63d0\u793a\u8bcd\u8f93\u5165\uff08\u4fee\u6539\u6700\u540e\u4e24\u4e2a\u5b57\u5373\u53ef\uff09",
-                    "required": true,
-                    "defaultValue": "\u5c06\u4e3b\u5149\u6e90\u79fb\u52a8\u5230\u89d2\u8272\u7684\u5de6\u4fa7",
-                    "options": []
-                },
-                {
-                    "id": "field_3",
-                    "nodeId": "18",
-                    "fieldName": "weight_dtype",
-                    "type": "select",
-                    "label": "\u6548\u679c\u4e0d\u597d\u53ef\u4ee5\u6539",
-                    "required": true,
-                    "defaultValue": "fp8_e4m3fn",
-                    "options": []
-                },
-                {
-                    "id": "field_4",
-                    "nodeId": "15",
-                    "fieldName": "strength_model",
-                    "type": "number",
-                    "label": "LORA\u6a21\u578b\u5f3a\u5ea6",
-                    "required": true,
-                    "defaultValue": "1.0000000000000002",
-                    "options": []
-                }
-            ]
-        },
-        {
-            "id": "5871980668a04eebbaccb76692f0c3b2",
-            "name": "Gemini2.0",
-            "description": "\u4e0a\u4f20\u56fe\u50cf 1 \u3010\u9009\u586b,\u4e00\u5f20\u56fe\u4e0d\u4e0a\u4f20\u9ed8\u8ba4\u662f\u6587\u751f\u56fe\u3011",
-            "webapp_id": "2027211316242423809",
-            "node_id": "2",
-            "field_name": "image",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u5b98\u65b9",
-            "favorite": true,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "covers/5871980668a04eebbaccb76692f0c3b2/cover.png",
-            "source_url": "https://www.runninghub.cn/ai-detail/2027211316242423809?from=new-home&tab=ai-apps&sourcePath=/ai-apps",
-            "prompt_node_id": "9",
-            "prompt_field_name": "text",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "field_1",
-                    "nodeId": "2",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "\u4e0a\u4f20\u56fe\u50cf 1 \u3010\u9009\u586b,\u4e00\u5f20\u56fe\u4e0d\u4e0a\u4f20\u9ed8\u8ba4\u662f\u6587\u751f\u56fe\u3011",
-                    "required": true,
-                    "defaultValue": "46ebc94e03f5c684a902a93c7b72d7383591fe7979bff26d7508ca72f13b2f18.png",
-                    "options": [
-                        "example.png",
-                        "None",
-                        "example.png",
-                        "keep_this_dic"
-                    ]
-                },
-                {
-                    "id": "field_2",
-                    "nodeId": "3",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "\u4e0a\u4f20\u56fe\u50cf 2 \u3010\u9009\u586b,\u7528\u4e0d\u4e0a\u7684\u56fe\u50cf\u53ef\u4ee5\u76f4\u63a5\u5220\u6389\u3011",
-                    "required": true,
-                    "defaultValue": "c819d8f6f925e1786ceaf7f77db42186cb742742aecb303998369bad2eff2aae.jpg",
-                    "options": [
-                        "example.png",
-                        "None",
-                        "example.png",
-                        "keep_this_dic"
-                    ]
-                },
-                {
-                    "id": "field_3",
-                    "nodeId": "4",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "\u4e0a\u4f20\u56fe\u50cf 3 \u3010\u9009\u586b,\u5de5\u4f5c\u6d41\u91cc\u9762\u6700\u591a\u652f\u630110\u5f20\u56fe\u3011",
-                    "required": true,
-                    "defaultValue": "7e1cb2850b8c95cb0b50b69403dd17f772b5673766458bba399797dfe7a181f8.jpg",
-                    "options": [
-                        "example.png",
-                        "None",
-                        "example.png",
-                        "keep_this_dic"
-                    ]
-                },
-                {
-                    "id": "field_4",
-                    "nodeId": "1",
-                    "fieldName": "aspectRatio",
-                    "type": "select",
-                    "label": "\u8bbe\u7f6e\u6bd4\u4f8b",
-                    "required": true,
-                    "defaultValue": "9:16",
-                    "options": [
-                        "auto",
-                        "1:1",
-                        "1:4",
-                        "1:8",
-                        "2:3",
-                        "3:2",
-                        "3:4",
-                        "4:1",
-                        "4:3",
-                        "4:5",
-                        "5:4",
-                        "8:1",
-                        "9:16",
-                        "16:9",
-                        "21:9"
-                    ]
-                },
-                {
-                    "id": "field_5",
-                    "nodeId": "1",
-                    "fieldName": "resolution",
-                    "type": "select",
-                    "label": "\u5206\u8fa8\u7387",
-                    "required": true,
-                    "defaultValue": "2k",
-                    "options": []
-                },
-                {
-                    "id": "field_6",
-                    "nodeId": "1",
-                    "fieldName": "channel",
-                    "type": "select",
-                    "label": "\u7b2c\u4e09\u65b9/\u5b98\u65b9\u5207\u6362",
-                    "required": true,
-                    "defaultValue": "Third-party",
-                    "options": []
-                },
-                {
-                    "id": "field_7",
-                    "nodeId": "9",
-                    "fieldName": "text",
-                    "type": "textarea",
-                    "label": "\u8f93\u5165\u6587\u672c",
-                    "required": true,
-                    "defaultValue": "\u8fd1\u666f\u6784\u56fe\uff08\u819d\u76d6\u4ee5\u4e0a\uff09\uff0c\u56fe 1 \u7684\u5973\u5b69\u7a7f\u7740\u56fe 2 \u7684\u8863\u670d\uff0c\u8eab\u5904\u56fe 3 \u7684\u573a\u666f\u4e2d\uff0c\u81ea\u4fe1\u5c55\u793a\u81ea\u6211\uff0c\u59ff\u6001\u9177\u98d2\u968f\u6027\uff0c\u773c\u795e\u51b7\u8273\u6709\u6c14\u573a\uff0c\u4fdd\u6301\u4eba\u7269\u4e94\u5b98\u4e00\u81f4\u6027\uff0c\u9ad8\u7ea7\u7535\u5f71\u8d28\u611f\uff0c\u5149\u5f71\u5e72\u51c0\u67d4\u548c\uff0c\u7ec6\u8282\u8d85\u6e05\uff0c\u6c1b\u56f4\u611f\u62c9\u6ee1\uff0c\u9177\u5973\u5b69\u98ce\u683c\uff0c\u753b\u9762\u81ea\u7136\u9ad8\u7ea7",
-                    "options": []
-                }
-            ]
-        },
-        {
-            "id": "a2213d0b4485483aa311da11a2a12f9c",
-            "name": "GPT-image2.0",
-            "description": "prompt",
-            "webapp_id": "2047257423085314050",
-            "node_id": "3",
-            "field_name": "prompt",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u5b98\u65b9",
-            "favorite": true,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "covers/a2213d0b4485483aa311da11a2a12f9c/cover.png",
-            "source_url": "https://www.runninghub.cn/ai-detail/2047257423085314050",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "field_1",
-                    "nodeId": "3",
-                    "fieldName": "prompt",
-                    "type": "textarea",
-                    "label": "prompt",
-                    "required": true,
-                    "defaultValue": "\u8fd9\u662f\u4e00\u5f20 ** \u4e2d\u8fdc\u6d77\u8fd0\u96c6\u88c5\u7bb1\u8fd0\u8f93\u6709\u9650\u516c\u53f8\uff08COSCO SHIPPING\uff09** \u7684 PPT \u5c01\u9762\u56fe\uff0c\u6574\u4f53\u98ce\u683c\u4e3a\u5546\u52a1\u79d1\u6280\u98ce\uff1a\n\u5de6\u4fa7\u6587\u5b57\u4fe1\u606f\u533a\uff1a\u5de6\u4e0a\u89d2\u662f COSCO SHIPPING \u7684\u54c1\u724c Logo\uff0c\u4e0b\u65b9\u662f\u516c\u53f8\u5168\u79f0 \u201c\u4e2d\u8fdc\u6d77\u8fd0\u96c6\u88c5\u7bb1\u8fd0\u8f93\u6709\u9650\u516c\u53f8\u201d \u53ca\u82f1\u6587 \u201cCOSCO SHIPPING LINES CO., LTD.\u201d\uff1b\u4e3b\u6807\u9898\u4e3a \u201c2026\u5e74 \u5e74\u5ea6\u63a8\u5e7f\u8ba1\u5212\u201d\uff0c\u526f\u6807\u9898\u4e3a \u201c\u643a\u878d\u5408\u542f\u7a0b\uff0c\u9a6d\u4ef7\u503c\u524d\u884c\u201d\uff0c\u5e95\u90e8\u6807\u6ce8\u65e5\u671f \u201c2026.11.11\u201d\uff1b\u80cc\u666f\u4e3a\u6d45\u7070\u767d\u8272\uff0c\u5e26\u6709\u534a\u900f\u660e\u70b9\u9635\u7eb9\u7406\uff0c\u53f3\u4fa7\u6709\u7ea2\u84dd\u6e10\u53d8\u7684\u88c5\u9970\u7ebf\u6761\u3002\n\u53f3\u4fa7\u89c6\u89c9\u4e3b\u56fe\uff1a\u753b\u9762\u4e3b\u4f53\u662f\u4e00\u8258\u5927\u578b\u96c6\u88c5\u7bb1\u8d27\u8f6e\uff0c\u8239\u8eab\u4e3a\u84dd\u7ea2\u914d\u8272\uff0c\u7532\u677f\u4e0a\u5806\u6ee1\u4e86\u4e94\u989c\u516d\u8272\u7684\u96c6\u88c5\u7bb1\uff0c\u80cc\u666f\u662f\u6a59\u8272\u6e2f\u53e3\u8d77\u91cd\u673a\u4e0e\u84dd\u8272\u6d77\u9762\uff0c\u5448\u73b0\u51fa\u4e13\u4e1a\u7684\u822a\u8fd0\u7269\u6d41\u573a\u666f\u3002\n\u5e95\u90e8\u8f85\u52a9\u6587\u5b57\uff1a\u53f3\u4e0b\u89d2\u6807\u6ce8\u4e86\u54c1\u724c\u613f\u666f \u201c\u521b\u5efa\u4e16\u754c\u4e00\u6d41\u7684\u5168\u7403\u7efc\u5408\u7269\u6d41\u4f9b\u5e94\u94fe\u670d\u52a1\u751f\u6001\u201d\uff0c\u6574\u4f53\u8272\u8c03\u4ee5\u84dd\u767d\u4e3a\u4e3b\uff0c\u642d\u914d\u6a59\u8272\u70b9\u7f00\uff0c\u5e72\u51c0\u5927\u6c14\uff0c\u7a81\u51fa\u4f01\u4e1a\u4e13\u4e1a\u3001\u56fd\u9645\u5316\u7684\u5f62\u8c61\u3002",
-                    "options": []
-                },
-                {
-                    "id": "field_2",
-                    "nodeId": "3",
-                    "fieldName": "aspectRatio",
-                    "type": "select",
-                    "label": "aspectRatio",
-                    "required": true,
-                    "defaultValue": "16:9",
-                    "options": [
-                        "empty",
-                        "1:1",
-                        "4:3",
-                        "3:4",
-                        "3:2",
-                        "2:3",
-                        "16:9",
-                        "9:16",
-                        "21:9",
-                        "9:21"
-                    ]
-                }
-            ]
-        },
-        {
-            "id": "d49a9893b55f4eee95910109c22ffee1",
-            "name": "\u6a21\u7279\u751f\u6210",
-            "description": "\u63d0\u793a\u8bcd",
-            "webapp_id": "1983009649588875265",
-            "node_id": "114",
-            "field_name": "text",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u4eba\u7269",
-            "favorite": false,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "covers/d49a9893b55f4eee95910109c22ffee1/cover.jpg",
-            "source_url": "https://www.runninghub.cn/ai-detail/1983009649588875265",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "field_1",
-                    "nodeId": "114",
-                    "fieldName": "text",
-                    "type": "textarea",
-                    "label": "\u63d0\u793a\u8bcd",
-                    "required": true,
-                    "defaultValue": "\u7a7f\u6234\n\u8fd9\u4f4d\u7531\u52a8\u6f2b Coser \u626e\u6f14\u7684\u6566\u714c\u795e\u5973\uff0c\u68b3\u7740\u53cc\u73af\u9ad8\u9afb\uff0c\u53d1\u9afb\u4e0a\u70b9\u7f00\u7740\u7cbe\u81f4\u82b1\u94bf\uff0c\u82b1\u94bf\u8272\u6cfd\u9c9c\u8273\uff0c\u4ee5\u91d1\u3001\u7c89\u4e3a\u4e3b\u8272\u8c03\uff0c\u5f62\u4f3c\u82b1\u74e3\uff0c\u8fb9\u7f18\u7ec6\u817b\u96d5\u7422\uff0c\u95ea\u70c1\u7740\u5fae\u5fae\u5149\u6cfd\u3002\u53d1\u95f4\u642d\u914d\u6d41\u82cf\u53d1\u9970\u4e0e\u6b65\u6447\uff0c\u6d41\u82cf\u7531\u4e1d\u7ebf\u4e0e\u7ec6\u5c0f\u91d1\u73e0\u4e32\u6210\uff0c\u957f\u77ed\u9519\u843d\uff0c\u968f\u7740\u52a8\u4f5c\u8f7b\u8f7b\u6447\u66f3\uff0c\u53d1\u51fa\u7ec6\u788e\u58f0\u54cd\u3002\u6b65\u6447\u4e0a\u9576\u5d4c\u7740\u84dd\u8272\u5b9d\u77f3\uff0c\u5982\u661f\u8fb0\u822c\u7480\u74a8\u3002\n\u8eab\u7740\u67d4\u8f6f\u7684\u767d\u8272\u8f7b\u7eb1\u4e91\u88f3\uff0c\u4e91\u88f3\u5e26\u6709\u957f\u957f\u6d41\u82cf\uff0c\u9762\u6599\u8f7b\u8584\u98d8\u9038\uff0c\u4eff\u4f5b\u70df\u96fe\u822c\u7f2d\u7ed5\u3002\u5916\u5c42\u62ab\u5e1b\u4ece\u53cc\u80a9\u6ed1\u843d\uff0c\u81ea\u7136\u5782\u5760\uff0c\u767d\u84dd\u91d1\u6e10\u53d8\u8272\u8fc7\u6e21\u81ea\u7136\uff0c\u4eff\u82e5\u68a6\u5e7b\u4e4b\u5883\u3002\u8170\u95f4\u675f\u7740\u6218\u56fd\u888d\u6837\u5f0f\u7684\u6e10\u53d8\u8272\u6c49\u670d\u8170\u5e26\uff0c\u8170\u5e26\u7eb9\u7406\u534e\u4e3d\uff0c\u91d1\u8272\u4e1d\u7ebf\u7ee3\u5236\u7684\u795e\u79d8\u56fe\u6848\u82e5\u9690\u82e5\u73b0\uff0c\u52fe\u52d2\u51fa\u7ea4\u7ec6\u8170\u80a2\u3002\n\u8eab\u4e0a\u914d\u9970\u7e41\u591a\u4e14\u534e\u4e3d\uff0c\u8116\u5b50\u4e0a\u6234\u7740\u4e00\u6761\u9576\u5d4c\u84dd\u8272\u5b9d\u77f3\u4e0e\u73cd\u73e0\u7684\u9879\u94fe\uff0c\u9879\u94fe\u4e2d\u592e\u7684\u5b9d\u77f3\u5448\u6c34\u6ef4\u72b6\uff0c\u6563\u53d1\u7740\u5e7d\u84dd\u5149\u8292\u3002\u624b\u8155\u4e0a\u5957\u7740\u51e0\u53ea\u91d1\u624b\u956f\uff0c\u624b\u956f\u4e0a\u523b\u6709\u7cbe\u7f8e\u7684\u9f99\u7eb9\uff0c\u4e0e\u5c71\u6d77\u7ecf\u9f99\u65cf\u516c\u4e3b\u7684\u8eab\u4efd\u76f8\u547c\u5e94\u3002\u53cc\u624b\u624b\u6307\u6234\u7740\u6212\u6307\uff0c\u6212\u6307\u9020\u578b\u72ec\u7279\uff0c\u6709\u7684\u9576\u5d4c\u7740\u5f69\u8272\u5b9d\u77f3\uff0c\u6709\u7684\u5219\u662f\u96d5\u523b\u6210\u9f99\u9996\u5f62\u72b6\u3002\n\u5bb9\u8c8c\u795e\u60c5\n\u62e5\u6709\u9ec4\u91d1\u6bd4\u4f8b\u4e94\u5b98\uff0c\u9e45\u86cb\u8138\u7ebf\u6761\u67d4\u548c\u6d41\u7545\u3002\u7cbe\u81f4\u5986\u5bb9\u4e0b\uff0c\u808c\u80a4\u767d\u7699\u7ec6\u817b\uff0c\u4f3c\u8986\u76d6\u4e86\u4e00\u5c42\u51b7\u767d\u76ae\u7c89\u5e95\u6db2\uff0c\u5448\u73b0\u51fa\u871c\u6843\u822c\u7684\u7ec6\u817b\u8d28\u611f\u3002\u4e39\u51e4\u773c\u5fae\u5fae\u4e0a\u6311\uff0c\u773c\u5c3e\u5904\u7528\u7ea2\u8272\u773c\u7ebf\u8f7b\u8f7b\u52fe\u52d2\uff0c\u773c\u795e\u9b45\u60d1\u4e14\u5b64\u50b2\uff0c\u5361\u59ff\u5170\u5927\u773c\u642d\u914d\u957f\u776b\u6bdb\uff0c\u6251\u95ea\u95f4\u4eff\u4f5b\u85cf\u7740\u65e0\u5c3d\u795e\u79d8\u3002\u9ad8\u633a\u7684\u9f3b\u6881\u4e0b\uff0c\u5634\u5507\u6d82\u62b9\u7740\u6de1\u7c89\u8272\u53e3\u7ea2\uff0c\u8272\u6cfd\u6c34\u6da6\u3002\n\u52a8\u4f5c\u59ff\u6001\n\u5728\u534a\u8eab\u7279\u5199\u753b\u9762\u4e2d\uff0c\u5fae\u5fae\u4fa7\u8eab\uff0c\u5934\u90e8\u7565\u5fae\u503e\u659c\uff0c\u773c\u795e\u76f4\u89c6\u955c\u5934\uff0c\u6d41\u9732\u51fa\u4e00\u79cd\u9ad8\u51b7\u4e0e\u758f\u79bb\u3002\u53ca\u8170\u957f\u53d1\u968f\u98ce\u98d8\u8d77\uff0c\u53d1\u4e1d\u7075\u52a8\u81ea\u7136\uff0c\u589e\u6dfb\u4e86\u51e0\u5206\u98d8\u9038\u611f\u3002\u4e00\u53ea\u624b\u8f7b\u8f7b\u62ac\u8d77\uff0c\u624b\u6307\u5fae\u66f2\uff0c\u4f3c\u5728\u8f7b\u629a\u7a7a\u6c14\u4e2d\u7684\u5c18\u57c3\uff0c\u53e6\u4e00\u53ea\u624b\u81ea\u7136\u5782\u843d\u5728\u8eab\u4fa7\uff0c\u59ff\u6001\u4f18\u96c5\u4e14\u72ec\u7279\u3002\n\u73af\u5883\n\u6574\u4f53\u573a\u666f\n\u8eab\u5904\u77f3\u7a9f\u573a\u666f\u4e4b\u4e2d\uff0c\u77f3\u7a9f\u5899\u58c1\u4e0a\u7ed8\u5236\u7740\u8272\u5f69\u6591\u6593\u7684\u58c1\u753b\uff0c\u867d\u5386\u7ecf\u5c81\u6708\u4fb5\u8680\uff0c\u4f46\u4f9d\u65e7\u80fd\u770b\u51fa\u5176\u7cbe\u7f8e\u7edd\u4f26\u3002\u58c1\u753b\u5185\u5bb9\u591a\u4e3a\u795e\u8bdd\u6545\u4e8b\u4e0e\u98de\u5929\u795e\u5973\uff0c\u7ebf\u6761\u7c97\u72b7\u800c\u6709\u529b\uff0c\u8272\u5f69\u5728\u6697\u8c03\u73af\u5883\u4e0b\u663e\u5f97\u6108\u53d1\u795e\u79d8\u3002\u77f3\u7a9f\u9876\u90e8\u5448\u62f1\u5f62\uff0c\u77f3\u5934\u7eb9\u7406\u6e05\u6670\u53ef\u89c1\uff0c\u4eff\u4f5b\u5728\u8bc9\u8bf4\u7740\u53e4\u8001\u7684\u5386\u53f2\u3002\n\u7ec6\u8282\u5e03\u7f6e\n\u77f3\u7a9f\u5185\u6446\u653e\u7740\u4e00\u4e9b\u53e4\u8001\u7684\u4f5b\u50cf\uff0c\u4f5b\u50cf\u9762\u5bb9\u6148\u60b2\uff0c\u8eab\u4e0a\u7684\u91d1\u6f06\u6709\u4e9b\u5df2\u7ecf\u8131\u843d\uff0c\u9732\u51fa\u6591\u9a73\u75d5\u8ff9\u3002\u5730\u9762\u4e0a\u6563\u843d\u7740\u4e00\u4e9b\u7834\u788e\u7684\u9676\u7247\u4e0e\u5f69\u8272\u73e0\u5b50\uff0c\u589e\u6dfb\u4e86\u51e0\u5206\u5386\u53f2\u7684\u6ca7\u6851\u611f\u3002\u5728\u4eba\u7269\u5468\u56f4\uff0c\u6709\u4e00\u4e9b\u82e5\u9690\u82e5\u73b0\u7684\u5149\u5f71\uff0c\u4f3c\u662f\u4ece\u77f3\u7a9f\u7f1d\u9699\u4e2d\u900f\u8fdb\u6765\u7684\u5149\u7ebf\uff0c\u53c8\u50cf\u662f\u795e\u79d8\u529b\u91cf\u6563\u53d1\u7684\u5149\u8292\u3002\n\u5149\u7ebf\n\u8fd0\u7528\u4f26\u52c3\u6717\u5149\uff0c\u5f3a\u70c8\u7684\u660e\u6697\u5bf9\u6bd4\u4e0e\u9ad8\u53cd\u5dee\u5851\u9020\u51fa\u7acb\u4f53\u7684\u4eba\u7269\u5f62\u8c61\u3002\u4e00\u675f\u5149\u4ece\u4eba\u7269\u4fa7\u4e0a\u65b9\u6253\u4e0b\u6765\uff0c\u7167\u4eae\u4e00\u4fa7\u8138\u988a\u3001\u5934\u53d1\u4e0e\u90e8\u5206\u670d\u9970\uff0c\u5728\u53e6\u4e00\u4fa7\u8138\u4e0a\u5f62\u6210\u4e09\u89d2\u5f62\u4eae\u533a\uff0c\u51f8\u663e\u51fa\u7acb\u4f53\u9aa8\u76f8\u3002\u6697\u8c03\u80cc\u666f\u4e0b\uff0c\u4eba\u7269\u7684\u767d\u84dd\u91d1\u6e10\u53d8\u8272\u670d\u9970\u4e0e\u767d\u7699\u808c\u80a4\u5728\u5149\u7ebf\u7167\u8000\u4e0b\u66f4\u52a0\u7a81\u51fa\uff0c\u5f62\u6210\u5f3a\u70c8\u89c6\u89c9\u51b2\u51fb\u3002\n\u540c\u65f6\u91c7\u7528\u9ad8\u66dd\u3001\u8fc7\u66dd\u6548\u679c\uff0c\u8ba9\u90e8\u5206\u5149\u7ebf\u6ea2\u51fa\uff0c\u8425\u9020\u51fa\u4e00\u79cd\u68a6\u5e7b\u3001\u8d85\u73b0\u5b9e\u7684\u6c1b\u56f4\u3002\u84dd\u767d\u66dd\u5149\u6548\u679c\u4f7f\u753b\u9762\u6574\u4f53\u504f\u5411\u51b7\u8272\u8c03\uff0c\u4e0e\u4eba\u7269\u51b7\u767d\u76ae\u53ca\u670d\u9970\u989c\u8272\u76f8\u547c\u5e94\u3002\u767d\u5316\u53d1\u5149\u7684\u82cd\u767d\u7c89\u5ae9\u808c\u80a4\u5728\u8fd9\u79cd\u5149\u7ebf\u5904\u7406\u4e0b\uff0c\u4eff\u4f5b\u6563\u53d1\u7740\u67d4\u548c\u5149\u8292\uff0c\u8fdb\u4e00\u6b65\u5f3a\u5316\u4e86\u4eba\u7269\u7684\u795e\u6027\u4e0e\u5996\u51b6\u4e4b\u611f\u3002\n\u62cd\u6444\u98ce\u683c\n\u878d\u5408\u4e8c\u6b21\u5143\u4e0e\u6444\u5f71\u8d28\u611f\u98ce\u683c\uff0c\u901a\u8fc7\u6162\u5feb\u95e8\u62cd\u6444\uff0c\u6355\u6349\u4eba\u7269\u53d1\u4e1d\u4e0e\u670d\u9970\u7684\u52a8\u6001\uff0c\u8425\u9020\u51fa\u6726\u80e7\u7f8e\u5b66\u6548\u679c\uff0c\u53d1\u4e1d\u4e0e\u62ab\u5e1b\u7684\u98d8\u52a8\u5448\u73b0\u51fa\u865a\u5316\u7684\u8f68\u8ff9\uff0c\u589e\u52a0\u753b\u9762\u5c42\u6b21\u611f\u3002\u753b\u9762\u5e26\u6709\u80f6\u7247\u9897\u7c92\u611f\uff0c\u6a21\u62df\u80f6\u7247\u6444\u5f71\u7684\u590d\u53e4\u8d28\u611f\uff0c\u8ba9\u6574\u4e2a\u753b\u9762\u5145\u6ee1\u60c5\u7eea\u6c1b\u56f4\u611f\uff0c\u4eff\u4f5b\u8bb2\u8ff0\u7740\u5c71\u6d77\u7ecf\u9f99\u65cf\u516c\u4e3b\u4e0d\u4e3a\u4eba\u77e5\u7684\u6545\u4e8b\u3002\u5947\u7279\u89c6\u89d2\u7684\u8fd0\u7528\uff0c\u6253\u7834\u5e38\u89c4\u62cd\u6444\u89d2\u5ea6\uff0c\u7ed9\u4eba\u4e00\u79cd\u65b0\u9896\u800c\u72ec\u7279\u7684\u89c6\u89c9\u4f53\u9a8c\uff0c\u4f7f\u89c2\u8005\u66f4\u80fd\u6c89\u6d78\u5728\u8fd9\u4e2a\u8d85\u73b0\u5b9e\u7684\u573a\u666f\u4e4b\u4e2d\u3002",
-                    "options": []
-                },
-                {
-                    "id": "field_2",
-                    "nodeId": "141",
-                    "fieldName": "select",
-                    "type": "text",
-                    "label": "\u56fe\u7247\u6bd4\u4f8b",
-                    "required": true,
-                    "defaultValue": "4",
-                    "options": []
-                },
-                {
-                    "id": "field_3",
-                    "nodeId": "123",
-                    "fieldName": "value",
-                    "type": "number",
-                    "label": "\u751f\u6210\u51e0\u5f20",
-                    "required": true,
-                    "defaultValue": "1",
-                    "options": []
-                }
-            ]
-        },
-        {
-            "id": "58d74210a3da42c89394bca3e34e5cfb",
-            "name": "\u89d2\u8272\u5b9a\u5986\u7167",
-            "description": "\u8f93\u5165\u4eba\u7269\u63cf\u8ff0\uff0c\u53ef\u7b80\u6613\u63cf\u5199\uff0c\u7cfb\u7edf\u4f1a\u81ea\u52a8\u4f18\u5316\u6269\u5199",
-            "webapp_id": "2035983832586919938",
-            "node_id": "116",
-            "field_name": "text",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u4eba\u7269",
-            "favorite": false,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "covers/58d74210a3da42c89394bca3e34e5cfb/cover.jpg",
-            "source_url": "https://www.runninghub.cn/ai-detail/2035983832586919938?inviteCode=o2jbp0c8",
-            "prompt_node_id": "",
-            "prompt_field_name": "",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "field_1",
-                    "nodeId": "116",
-                    "fieldName": "text",
-                    "type": "textarea",
-                    "label": "\u8f93\u5165\u4eba\u7269\u63cf\u8ff0\uff0c\u53ef\u7b80\u6613\u63cf\u5199\uff0c\u7cfb\u7edf\u4f1a\u81ea\u52a8\u4f18\u5316\u6269\u5199",
-                    "required": true,
-                    "defaultValue": "\u4e9a\u6d32\u5973\u602730\u5c81\uff0c\u5b8b\u671d\u670d\u88c5",
-                    "options": []
-                }
-            ]
-        },
-        {
-            "id": "e9799457133c4118b3002f822a3f25c1",
-            "name": "GPT-image2.0\u56fe\u751f\u56fe",
-            "description": "\u4e0a\u4f20\u56fe\u50cf1",
-            "webapp_id": "2046794946094571522",
-            "node_id": "3",
-            "field_name": "image",
-            "input_type": "image",
-            "output_type": "png",
-            "auto_unzip": false,
-            "category": "\u5b98\u65b9",
-            "favorite": true,
-            "accent": "#6657ff",
-            "enabled": true,
-            "cover_path": "",
-            "source_url": "https://www.runninghub.cn/ai-detail/2046794946094571522?from=new-home&tab=ai-apps&sourcePath=/ai-apps",
-            "prompt_node_id": "4",
-            "prompt_field_name": "prompt",
-            "default_prompt": "",
-            "sort_order": 100,
-            "inputs": [
-                {
-                    "id": "field_1",
-                    "nodeId": "3",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "\u4e0a\u4f20\u56fe\u50cf1",
-                    "required": true,
-                    "defaultValue": "00e448f616f92525c0ed90f92ca5d8dd0e803b5d730c66ff49e2cdcff0968655.png",
-                    "options": [
-                        "example.png",
-                        "None",
-                        "example.png",
-                        "keep_this_dic"
-                    ]
-                },
-                {
-                    "id": "field_2",
-                    "nodeId": "2",
-                    "fieldName": "image",
-                    "type": "image",
-                    "label": "\u4e0a\u4f20\u56fe\u50cf2",
-                    "required": true,
-                    "defaultValue": "f9e0f510b5b7a29a80547147af045cc75b338af36a6eee5953ca2b9844d37c48.png",
-                    "options": [
-                        "example.png",
-                        "None",
-                        "example.png",
-                        "keep_this_dic"
-                    ]
-                },
-                {
-                    "id": "field_3",
-                    "nodeId": "4",
-                    "fieldName": "aspectRatio",
-                    "type": "select",
-                    "label": "\u8bbe\u7f6e\u6bd4\u4f8b",
-                    "required": true,
-                    "defaultValue": "9:16",
-                    "options": [
-                        "empty",
-                        "3:2",
-                        "1:1",
-                        "2:3",
-                        "5:4",
-                        "4:5",
-                        "16:9",
-                        "9:16",
-                        "21:9",
-                        "3:4",
-                        "4:3"
-                    ]
-                },
-                {
-                    "id": "field_4",
-                    "nodeId": "4",
-                    "fieldName": "prompt",
-                    "type": "textarea",
-                    "label": "\u8f93\u5165\u6587\u672c",
-                    "required": true,
-                    "defaultValue": "\u56fe1\u7684\u89d2\u8272\u6309\u7167\u56fe2\u7684\u6392\u7248\u751f\u6210\u65b0\u7684Q\u7248\u840c\u7cfb3D IP\u5168\u6848\u8bbe\u8ba1",
-                    "options": []
-                }
-            ]
+          "id": "image",
+          "nodeId": "3",
+          "fieldName": "image",
+          "type": "image",
+          "label": "图片",
+          "required": true,
+          "defaultValue": "",
+          "options": []
         }
-    ]
+      ]
+    },
+    {
+      "id": "private-zip",
+      "name": "高级换装",
+      "description": "人物换装",
+      "webapp_id": "2054095300863774721",
+      "node_id": "191",
+      "field_name": "image",
+      "input_type": "image",
+      "output_type": "zip",
+      "auto_unzip": true,
+      "category": "换装",
+      "favorite": true,
+      "accent": "#8a5cf6",
+      "enabled": true,
+      "cover_path": "covers/private-zip/cover.jpg",
+      "source_url": "https://www.runninghub.cn/ai-detail/2054095300863774721",
+      "prompt_node_id": "",
+      "prompt_field_name": "",
+      "default_prompt": "",
+      "sort_order": 20,
+      "inputs": [
+        {
+          "id": "image",
+          "nodeId": "191",
+          "fieldName": "image",
+          "type": "image",
+          "label": "图片",
+          "required": true,
+          "defaultValue": "",
+          "options": []
+        }
+      ]
+    },
+    {
+      "id": "cf3bd649782046e89def0d534db1c04e",
+      "name": "毛毡画风",
+      "description": "把图片改成毛毡风格",
+      "webapp_id": "2014521221399973890",
+      "node_id": "3",
+      "field_name": "image",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "风格",
+      "favorite": false,
+      "accent": "#08d456",
+      "enabled": true,
+      "cover_path": "covers/cf3bd649782046e89def0d534db1c04e/cover.jpg",
+      "source_url": "https://www.runninghub.cn/ai-detail/2014521221399973890",
+      "prompt_node_id": "",
+      "prompt_field_name": "",
+      "default_prompt": "",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "image",
+          "nodeId": "3",
+          "fieldName": "image",
+          "type": "image",
+          "label": "图片",
+          "required": true,
+          "defaultValue": "",
+          "options": []
+        }
+      ]
+    },
+    {
+      "id": "27c9b0e76d334aa981c9e9d2b524b5f3",
+      "name": "电影感",
+      "description": "image",
+      "webapp_id": "2008912728567582722",
+      "node_id": "3",
+      "field_name": "image",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "风格",
+      "favorite": false,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "covers/27c9b0e76d334aa981c9e9d2b524b5f3/cover.jpg",
+      "source_url": "https://www.runninghub.cn/ai-detail/2008912728567582722",
+      "prompt_node_id": "",
+      "prompt_field_name": "",
+      "default_prompt": "",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "image",
+          "nodeId": "3",
+          "fieldName": "image",
+          "type": "image",
+          "label": "图片",
+          "required": true,
+          "defaultValue": "",
+          "options": []
+        }
+      ]
+    },
+    {
+      "id": "a7c11395a4764bd58f9f81392cea6a72",
+      "name": "地标博物馆",
+      "description": "image",
+      "webapp_id": "2004896299734495234",
+      "node_id": "3",
+      "field_name": "image",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "设计",
+      "favorite": false,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "covers/a7c11395a4764bd58f9f81392cea6a72/cover.jpg",
+      "source_url": "https://www.runninghub.cn/ai-detail/2004896299734495234",
+      "prompt_node_id": "",
+      "prompt_field_name": "",
+      "default_prompt": "",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "field_1",
+          "nodeId": "3",
+          "fieldName": "image",
+          "type": "image",
+          "label": "image",
+          "required": true,
+          "defaultValue": "7e57e4edc25936bee07e9fd196afcff9c8d0a57801bac837cada931f991304f6.jpeg",
+          "options": [
+            "example.png",
+            "keep_this_dic"
+          ]
+        },
+        {
+          "id": "field_2",
+          "nodeId": "2",
+          "fieldName": "resolution",
+          "type": "select",
+          "label": "resolution",
+          "required": true,
+          "defaultValue": "1k",
+          "options": [
+            "1k",
+            "2k",
+            "4k",
+            "8k (Official only)"
+          ]
+        },
+        {
+          "id": "field_3",
+          "nodeId": "2",
+          "fieldName": "aspectRatio",
+          "type": "select",
+          "label": "aspectRatio",
+          "required": true,
+          "defaultValue": "auto",
+          "options": [
+            "auto",
+            "1:1",
+            "2:3",
+            "3:2",
+            "3:4",
+            "4:3",
+            "4:5",
+            "5:4",
+            "9:16",
+            "16:9",
+            "21:9"
+          ]
+        },
+        {
+          "id": "field_4",
+          "nodeId": "2",
+          "fieldName": "channel",
+          "type": "select",
+          "label": "channel",
+          "required": true,
+          "defaultValue": "Third-party",
+          "options": [
+            "Third-party",
+            "Official"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d5826bb9b03240198c13935bc5f766ed",
+      "name": "工业拆解",
+      "description": "image",
+      "webapp_id": "2011792424443584513",
+      "node_id": "21",
+      "field_name": "image",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "设计",
+      "favorite": false,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "covers/d5826bb9b03240198c13935bc5f766ed/cover.jpg",
+      "source_url": "https://www.runninghub.cn/ai-detail/2011792424443584513",
+      "prompt_node_id": "",
+      "prompt_field_name": "",
+      "default_prompt": "",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "field_1",
+          "nodeId": "21",
+          "fieldName": "image",
+          "type": "image",
+          "label": "image",
+          "required": true,
+          "defaultValue": "055d08cb826e55e97dbcf5473d878d779315a063b4726eb7aab4075595a634f9.jpg",
+          "options": [
+            "example.png",
+            "keep_this_dic"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e8cd5fb8c4f84d8ca8e78d3b284cf072",
+      "name": "微观城市",
+      "description": "物品",
+      "webapp_id": "2012046144641179649",
+      "node_id": "13",
+      "field_name": "value",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "设计",
+      "favorite": false,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "covers/e8cd5fb8c4f84d8ca8e78d3b284cf072/cover.jpg",
+      "source_url": "https://www.runninghub.cn/ai-detail/2012046144641179649",
+      "prompt_node_id": "",
+      "prompt_field_name": "",
+      "default_prompt": "",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "field_1",
+          "nodeId": "13",
+          "fieldName": "value",
+          "type": "textarea",
+          "label": "物品",
+          "required": true,
+          "defaultValue": "发电机",
+          "options": []
+        },
+        {
+          "id": "field_2",
+          "nodeId": "14",
+          "fieldName": "value",
+          "type": "textarea",
+          "label": "城市",
+          "required": true,
+          "defaultValue": "柏林",
+          "options": []
+        },
+        {
+          "id": "field_3",
+          "nodeId": "2",
+          "fieldName": "aspectRatio",
+          "type": "select",
+          "label": "图片比例",
+          "required": true,
+          "defaultValue": "auto",
+          "options": [
+            "auto",
+            "1:1",
+            "2:3",
+            "3:2",
+            "3:4",
+            "4:3",
+            "4:5",
+            "5:4",
+            "9:16",
+            "16:9",
+            "21:9"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "49a8e706871e4b76a3d0cd43082bfe26",
+      "name": "明星海报",
+      "description": "default_value",
+      "webapp_id": "2010275996641009665",
+      "node_id": "20",
+      "field_name": "default_value",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "设计",
+      "favorite": false,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "covers/49a8e706871e4b76a3d0cd43082bfe26/cover.jpg",
+      "source_url": "https://www.runninghub.cn/ai-detail/2010275996641009665",
+      "prompt_node_id": "",
+      "prompt_field_name": "",
+      "default_prompt": "",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "field_1",
+          "nodeId": "20",
+          "fieldName": "default_value",
+          "type": "textarea",
+          "label": "default_value",
+          "required": true,
+          "defaultValue": "迈克尔舒马赫",
+          "options": []
+        },
+        {
+          "id": "field_2",
+          "nodeId": "2",
+          "fieldName": "aspectRatio",
+          "type": "select",
+          "label": "aspectRatio",
+          "required": true,
+          "defaultValue": "3:4",
+          "options": [
+            "auto",
+            "1:1",
+            "2:3",
+            "3:2",
+            "3:4",
+            "4:3",
+            "4:5",
+            "5:4",
+            "9:16",
+            "16:9",
+            "21:9"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a3936184bf644f00a3b7ac5e06557289",
+      "name": "图片去水印",
+      "description": "image",
+      "webapp_id": "2053828043508076545",
+      "node_id": "17",
+      "field_name": "image",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": true,
+      "category": "其他",
+      "favorite": false,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "",
+      "source_url": "https://www.runninghub.cn/ai-detail/2053828043508076545",
+      "prompt_node_id": "",
+      "prompt_field_name": "",
+      "default_prompt": "",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "field_1",
+          "nodeId": "17",
+          "fieldName": "image",
+          "type": "image",
+          "label": "image",
+          "required": true,
+          "defaultValue": "example.png",
+          "options": [
+            "example.png",
+            "None",
+            "example.png",
+            "keep_this_dic"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4ac618dbfb404e0dbbfd2c5f98e1bdeb",
+      "name": "一键换装",
+      "description": "模特图",
+      "webapp_id": "2012848202482978818",
+      "node_id": "107",
+      "field_name": "image",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "换装",
+      "favorite": false,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "covers/4ac618dbfb404e0dbbfd2c5f98e1bdeb/cover.jpg",
+      "source_url": "https://www.runninghub.cn/ai-detail/2012848202482978818",
+      "prompt_node_id": "223",
+      "prompt_field_name": "value",
+      "default_prompt": "让图一的人物穿上图二的衣服",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "field_1",
+          "nodeId": "107",
+          "fieldName": "image",
+          "type": "image",
+          "label": "模特图",
+          "required": true,
+          "defaultValue": "pasted/b3d4155904898bf44d38faa464bca2d2bf5ce85301f29f4109143a7ffb77eab8.png",
+          "options": [
+            "example.png",
+            "keep_this_dic"
+          ]
+        },
+        {
+          "id": "field_2",
+          "nodeId": "285",
+          "fieldName": "image",
+          "type": "image",
+          "label": "替换衣物图",
+          "required": true,
+          "defaultValue": "pasted/966328a757f6c17207ffbe7b2975e094fb064f3df982b1290f0cc00674b8a931.png",
+          "options": [
+            "example.png",
+            "keep_this_dic"
+          ]
+        },
+        {
+          "id": "field_3",
+          "nodeId": "223",
+          "fieldName": "value",
+          "type": "textarea",
+          "label": "提示词",
+          "required": true,
+          "defaultValue": "让图一的人物穿上图二的衣服",
+          "options": [],
+          "role": "prompt"
+        }
+      ]
+    },
+    {
+      "id": "0d842e805321422291e856d461c3d9bf",
+      "name": "万物重打光（高级）",
+      "description": "Qwen-edit - 贵",
+      "webapp_id": "1964753754237095937",
+      "node_id": "19",
+      "field_name": "image",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "其他",
+      "favorite": false,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "",
+      "source_url": "https://www.runninghub.cn/ai-detail/1964753754237095937",
+      "prompt_node_id": "25",
+      "prompt_field_name": "text",
+      "default_prompt": "将主光源移动到角色的左侧",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "field_1",
+          "nodeId": "19",
+          "fieldName": "image",
+          "type": "image",
+          "label": "图片替换",
+          "required": true,
+          "defaultValue": "51b8c742a34a6bde76d6c25cec59a711198e4ebc8918b5b18beb08f3c6f99a78.jpg",
+          "options": [
+            "example.png",
+            "keep_this_dic"
+          ]
+        },
+        {
+          "id": "field_2",
+          "nodeId": "25",
+          "fieldName": "text",
+          "type": "textarea",
+          "label": "提示词输入（修改最后两个字即可）",
+          "required": true,
+          "defaultValue": "将主光源移动到角色的左侧",
+          "options": [],
+          "role": "prompt"
+        },
+        {
+          "id": "field_3",
+          "nodeId": "18",
+          "fieldName": "weight_dtype",
+          "type": "select",
+          "label": "效果不好可以改",
+          "required": true,
+          "defaultValue": "fp8_e4m3fn",
+          "options": []
+        },
+        {
+          "id": "field_4",
+          "nodeId": "15",
+          "fieldName": "strength_model",
+          "type": "number",
+          "label": "LORA模型强度",
+          "required": true,
+          "defaultValue": "1.0000000000000002",
+          "options": []
+        }
+      ]
+    },
+    {
+      "id": "5871980668a04eebbaccb76692f0c3b2",
+      "name": "Gemini2.0",
+      "description": "上传图像 1 【选填,一张图不上传默认是文生图】",
+      "webapp_id": "2027211316242423809",
+      "node_id": "2",
+      "field_name": "image",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "官方",
+      "favorite": true,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "covers/5871980668a04eebbaccb76692f0c3b2/cover.png",
+      "source_url": "https://www.runninghub.cn/ai-detail/2027211316242423809?from=new-home&tab=ai-apps&sourcePath=/ai-apps",
+      "prompt_node_id": "9",
+      "prompt_field_name": "text",
+      "default_prompt": "近景构图（膝盖以上），图 1 的女孩穿着图 2 的衣服，身处图 3 的场景中，自信展示自我，姿态酷飒随性，眼神冷艳有气场，保持人物五官一致性，高级电影质感，光影干净柔和，细节超清，氛围感拉满，酷女孩风格，画面自然高级",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "field_1",
+          "nodeId": "2",
+          "fieldName": "image",
+          "type": "image",
+          "label": "上传图像 1 【选填,一张图不上传默认是文生图】",
+          "required": true,
+          "defaultValue": "46ebc94e03f5c684a902a93c7b72d7383591fe7979bff26d7508ca72f13b2f18.png",
+          "options": [
+            "example.png",
+            "None",
+            "example.png",
+            "keep_this_dic"
+          ]
+        },
+        {
+          "id": "field_2",
+          "nodeId": "3",
+          "fieldName": "image",
+          "type": "image",
+          "label": "上传图像 2 【选填,用不上的图像可以直接删掉】",
+          "required": true,
+          "defaultValue": "c819d8f6f925e1786ceaf7f77db42186cb742742aecb303998369bad2eff2aae.jpg",
+          "options": [
+            "example.png",
+            "None",
+            "example.png",
+            "keep_this_dic"
+          ]
+        },
+        {
+          "id": "field_3",
+          "nodeId": "4",
+          "fieldName": "image",
+          "type": "image",
+          "label": "上传图像 3 【选填,工作流里面最多支持10张图】",
+          "required": true,
+          "defaultValue": "7e1cb2850b8c95cb0b50b69403dd17f772b5673766458bba399797dfe7a181f8.jpg",
+          "options": [
+            "example.png",
+            "None",
+            "example.png",
+            "keep_this_dic"
+          ]
+        },
+        {
+          "id": "field_4",
+          "nodeId": "1",
+          "fieldName": "aspectRatio",
+          "type": "select",
+          "label": "设置比例",
+          "required": true,
+          "defaultValue": "9:16",
+          "options": [
+            "auto",
+            "1:1",
+            "1:4",
+            "1:8",
+            "2:3",
+            "3:2",
+            "3:4",
+            "4:1",
+            "4:3",
+            "4:5",
+            "5:4",
+            "8:1",
+            "9:16",
+            "16:9",
+            "21:9"
+          ]
+        },
+        {
+          "id": "field_5",
+          "nodeId": "1",
+          "fieldName": "resolution",
+          "type": "select",
+          "label": "分辨率",
+          "required": true,
+          "defaultValue": "2k",
+          "options": []
+        },
+        {
+          "id": "field_6",
+          "nodeId": "1",
+          "fieldName": "channel",
+          "type": "select",
+          "label": "第三方/官方切换",
+          "required": true,
+          "defaultValue": "Third-party",
+          "options": []
+        },
+        {
+          "id": "field_7",
+          "nodeId": "9",
+          "fieldName": "text",
+          "type": "textarea",
+          "label": "输入文本",
+          "required": true,
+          "defaultValue": "近景构图（膝盖以上），图 1 的女孩穿着图 2 的衣服，身处图 3 的场景中，自信展示自我，姿态酷飒随性，眼神冷艳有气场，保持人物五官一致性，高级电影质感，光影干净柔和，细节超清，氛围感拉满，酷女孩风格，画面自然高级",
+          "options": [],
+          "role": "prompt"
+        }
+      ]
+    },
+    {
+      "id": "a2213d0b4485483aa311da11a2a12f9c",
+      "name": "GPT-image2.0",
+      "description": "prompt",
+      "webapp_id": "2047257423085314050",
+      "node_id": "3",
+      "field_name": "prompt",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "官方",
+      "favorite": true,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "covers/a2213d0b4485483aa311da11a2a12f9c/cover.png",
+      "source_url": "https://www.runninghub.cn/ai-detail/2047257423085314050",
+      "prompt_node_id": "3",
+      "prompt_field_name": "prompt",
+      "default_prompt": "这是一张 ** 中远海运集装箱运输有限公司（COSCO SHIPPING）** 的 PPT 封面图，整体风格为商务科技风：\n左侧文字信息区：左上角是 COSCO SHIPPING 的品牌 Logo，下方是公司全称 “中远海运集装箱运输有限公司” 及英文 “COSCO SHIPPING LINES CO., LTD.”；主标题为 “2026年 年度推广计划”，副标题为 “携融合启程，驭价值前行”，底部标注日期 “2026.11.11”；背景为浅灰白色，带有半透明点阵纹理，右侧有红蓝渐变的装饰线条。\n右侧视觉主图：画面主体是一艘大型集装箱货轮，船身为蓝红配色，甲板上堆满了五颜六色的集装箱，背景是橙色港口起重机与蓝色海面，呈现出专业的航运物流场景。\n底部辅助文字：右下角标注了品牌愿景 “创建世界一流的全球综合物流供应链服务生态”，整体色调以蓝白为主，搭配橙色点缀，干净大气，突出企业专业、国际化的形象。",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "field_1",
+          "nodeId": "3",
+          "fieldName": "prompt",
+          "type": "textarea",
+          "label": "prompt",
+          "required": true,
+          "defaultValue": "这是一张 ** 中远海运集装箱运输有限公司（COSCO SHIPPING）** 的 PPT 封面图，整体风格为商务科技风：\n左侧文字信息区：左上角是 COSCO SHIPPING 的品牌 Logo，下方是公司全称 “中远海运集装箱运输有限公司” 及英文 “COSCO SHIPPING LINES CO., LTD.”；主标题为 “2026年 年度推广计划”，副标题为 “携融合启程，驭价值前行”，底部标注日期 “2026.11.11”；背景为浅灰白色，带有半透明点阵纹理，右侧有红蓝渐变的装饰线条。\n右侧视觉主图：画面主体是一艘大型集装箱货轮，船身为蓝红配色，甲板上堆满了五颜六色的集装箱，背景是橙色港口起重机与蓝色海面，呈现出专业的航运物流场景。\n底部辅助文字：右下角标注了品牌愿景 “创建世界一流的全球综合物流供应链服务生态”，整体色调以蓝白为主，搭配橙色点缀，干净大气，突出企业专业、国际化的形象。",
+          "options": [],
+          "role": "prompt"
+        },
+        {
+          "id": "field_2",
+          "nodeId": "3",
+          "fieldName": "aspectRatio",
+          "type": "select",
+          "label": "aspectRatio",
+          "required": true,
+          "defaultValue": "16:9",
+          "options": [
+            "empty",
+            "1:1",
+            "4:3",
+            "3:4",
+            "3:2",
+            "2:3",
+            "16:9",
+            "9:16",
+            "21:9",
+            "9:21"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d49a9893b55f4eee95910109c22ffee1",
+      "name": "模特生成",
+      "description": "提示词",
+      "webapp_id": "1983009649588875265",
+      "node_id": "114",
+      "field_name": "text",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "人物",
+      "favorite": false,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "covers/d49a9893b55f4eee95910109c22ffee1/cover.jpg",
+      "source_url": "https://www.runninghub.cn/ai-detail/1983009649588875265",
+      "prompt_node_id": "114",
+      "prompt_field_name": "text",
+      "default_prompt": "穿戴\n这位由动漫 Coser 扮演的敦煌神女，梳着双环高髻，发髻上点缀着精致花钿，花钿色泽鲜艳，以金、粉为主色调，形似花瓣，边缘细腻雕琢，闪烁着微微光泽。发间搭配流苏发饰与步摇，流苏由丝线与细小金珠串成，长短错落，随着动作轻轻摇曳，发出细碎声响。步摇上镶嵌着蓝色宝石，如星辰般璀璨。\n身着柔软的白色轻纱云裳，云裳带有长长流苏，面料轻薄飘逸，仿佛烟雾般缭绕。外层披帛从双肩滑落，自然垂坠，白蓝金渐变色过渡自然，仿若梦幻之境。腰间束着战国袍样式的渐变色汉服腰带，腰带纹理华丽，金色丝线绣制的神秘图案若隐若现，勾勒出纤细腰肢。\n身上配饰繁多且华丽，脖子上戴着一条镶嵌蓝色宝石与珍珠的项链，项链中央的宝石呈水滴状，散发着幽蓝光芒。手腕上套着几只金手镯，手镯上刻有精美的龙纹，与山海经龙族公主的身份相呼应。双手手指戴着戒指，戒指造型独特，有的镶嵌着彩色宝石，有的则是雕刻成龙首形状。\n容貌神情\n拥有黄金比例五官，鹅蛋脸线条柔和流畅。精致妆容下，肌肤白皙细腻，似覆盖了一层冷白皮粉底液，呈现出蜜桃般的细腻质感。丹凤眼微微上挑，眼尾处用红色眼线轻轻勾勒，眼神魅惑且孤傲，卡姿兰大眼搭配长睫毛，扑闪间仿佛藏着无尽神秘。高挺的鼻梁下，嘴唇涂抹着淡粉色口红，色泽水润。\n动作姿态\n在半身特写画面中，微微侧身，头部略微倾斜，眼神直视镜头，流露出一种高冷与疏离。及腰长发随风飘起，发丝灵动自然，增添了几分飘逸感。一只手轻轻抬起，手指微曲，似在轻抚空气中的尘埃，另一只手自然垂落在身侧，姿态优雅且独特。\n环境\n整体场景\n身处石窟场景之中，石窟墙壁上绘制着色彩斑斓的壁画，虽历经岁月侵蚀，但依旧能看出其精美绝伦。壁画内容多为神话故事与飞天神女，线条粗犷而有力，色彩在暗调环境下显得愈发神秘。石窟顶部呈拱形，石头纹理清晰可见，仿佛在诉说着古老的历史。\n细节布置\n石窟内摆放着一些古老的佛像，佛像面容慈悲，身上的金漆有些已经脱落，露出斑驳痕迹。地面上散落着一些破碎的陶片与彩色珠子，增添了几分历史的沧桑感。在人物周围，有一些若隐若现的光影，似是从石窟缝隙中透进来的光线，又像是神秘力量散发的光芒。\n光线\n运用伦勃朗光，强烈的明暗对比与高反差塑造出立体的人物形象。一束光从人物侧上方打下来，照亮一侧脸颊、头发与部分服饰，在另一侧脸上形成三角形亮区，凸显出立体骨相。暗调背景下，人物的白蓝金渐变色服饰与白皙肌肤在光线照耀下更加突出，形成强烈视觉冲击。\n同时采用高曝、过曝效果，让部分光线溢出，营造出一种梦幻、超现实的氛围。蓝白曝光效果使画面整体偏向冷色调，与人物冷白皮及服饰颜色相呼应。白化发光的苍白粉嫩肌肤在这种光线处理下，仿佛散发着柔和光芒，进一步强化了人物的神性与妖冶之感。\n拍摄风格\n融合二次元与摄影质感风格，通过慢快门拍摄，捕捉人物发丝与服饰的动态，营造出朦胧美学效果，发丝与披帛的飘动呈现出虚化的轨迹，增加画面层次感。画面带有胶片颗粒感，模拟胶片摄影的复古质感，让整个画面充满情绪氛围感，仿佛讲述着山海经龙族公主不为人知的故事。奇特视角的运用，打破常规拍摄角度，给人一种新颖而独特的视觉体验，使观者更能沉浸在这个超现实的场景之中。",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "field_1",
+          "nodeId": "114",
+          "fieldName": "text",
+          "type": "textarea",
+          "label": "提示词",
+          "required": true,
+          "defaultValue": "穿戴\n这位由动漫 Coser 扮演的敦煌神女，梳着双环高髻，发髻上点缀着精致花钿，花钿色泽鲜艳，以金、粉为主色调，形似花瓣，边缘细腻雕琢，闪烁着微微光泽。发间搭配流苏发饰与步摇，流苏由丝线与细小金珠串成，长短错落，随着动作轻轻摇曳，发出细碎声响。步摇上镶嵌着蓝色宝石，如星辰般璀璨。\n身着柔软的白色轻纱云裳，云裳带有长长流苏，面料轻薄飘逸，仿佛烟雾般缭绕。外层披帛从双肩滑落，自然垂坠，白蓝金渐变色过渡自然，仿若梦幻之境。腰间束着战国袍样式的渐变色汉服腰带，腰带纹理华丽，金色丝线绣制的神秘图案若隐若现，勾勒出纤细腰肢。\n身上配饰繁多且华丽，脖子上戴着一条镶嵌蓝色宝石与珍珠的项链，项链中央的宝石呈水滴状，散发着幽蓝光芒。手腕上套着几只金手镯，手镯上刻有精美的龙纹，与山海经龙族公主的身份相呼应。双手手指戴着戒指，戒指造型独特，有的镶嵌着彩色宝石，有的则是雕刻成龙首形状。\n容貌神情\n拥有黄金比例五官，鹅蛋脸线条柔和流畅。精致妆容下，肌肤白皙细腻，似覆盖了一层冷白皮粉底液，呈现出蜜桃般的细腻质感。丹凤眼微微上挑，眼尾处用红色眼线轻轻勾勒，眼神魅惑且孤傲，卡姿兰大眼搭配长睫毛，扑闪间仿佛藏着无尽神秘。高挺的鼻梁下，嘴唇涂抹着淡粉色口红，色泽水润。\n动作姿态\n在半身特写画面中，微微侧身，头部略微倾斜，眼神直视镜头，流露出一种高冷与疏离。及腰长发随风飘起，发丝灵动自然，增添了几分飘逸感。一只手轻轻抬起，手指微曲，似在轻抚空气中的尘埃，另一只手自然垂落在身侧，姿态优雅且独特。\n环境\n整体场景\n身处石窟场景之中，石窟墙壁上绘制着色彩斑斓的壁画，虽历经岁月侵蚀，但依旧能看出其精美绝伦。壁画内容多为神话故事与飞天神女，线条粗犷而有力，色彩在暗调环境下显得愈发神秘。石窟顶部呈拱形，石头纹理清晰可见，仿佛在诉说着古老的历史。\n细节布置\n石窟内摆放着一些古老的佛像，佛像面容慈悲，身上的金漆有些已经脱落，露出斑驳痕迹。地面上散落着一些破碎的陶片与彩色珠子，增添了几分历史的沧桑感。在人物周围，有一些若隐若现的光影，似是从石窟缝隙中透进来的光线，又像是神秘力量散发的光芒。\n光线\n运用伦勃朗光，强烈的明暗对比与高反差塑造出立体的人物形象。一束光从人物侧上方打下来，照亮一侧脸颊、头发与部分服饰，在另一侧脸上形成三角形亮区，凸显出立体骨相。暗调背景下，人物的白蓝金渐变色服饰与白皙肌肤在光线照耀下更加突出，形成强烈视觉冲击。\n同时采用高曝、过曝效果，让部分光线溢出，营造出一种梦幻、超现实的氛围。蓝白曝光效果使画面整体偏向冷色调，与人物冷白皮及服饰颜色相呼应。白化发光的苍白粉嫩肌肤在这种光线处理下，仿佛散发着柔和光芒，进一步强化了人物的神性与妖冶之感。\n拍摄风格\n融合二次元与摄影质感风格，通过慢快门拍摄，捕捉人物发丝与服饰的动态，营造出朦胧美学效果，发丝与披帛的飘动呈现出虚化的轨迹，增加画面层次感。画面带有胶片颗粒感，模拟胶片摄影的复古质感，让整个画面充满情绪氛围感，仿佛讲述着山海经龙族公主不为人知的故事。奇特视角的运用，打破常规拍摄角度，给人一种新颖而独特的视觉体验，使观者更能沉浸在这个超现实的场景之中。",
+          "options": [],
+          "role": "prompt"
+        },
+        {
+          "id": "field_2",
+          "nodeId": "141",
+          "fieldName": "select",
+          "type": "text",
+          "label": "图片比例",
+          "required": true,
+          "defaultValue": "4",
+          "options": []
+        },
+        {
+          "id": "field_3",
+          "nodeId": "123",
+          "fieldName": "value",
+          "type": "number",
+          "label": "生成几张",
+          "required": true,
+          "defaultValue": "1",
+          "options": []
+        }
+      ]
+    },
+    {
+      "id": "58d74210a3da42c89394bca3e34e5cfb",
+      "name": "角色定妆照",
+      "description": "输入人物描述，可简易描写，系统会自动优化扩写",
+      "webapp_id": "2035983832586919938",
+      "node_id": "116",
+      "field_name": "text",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "人物",
+      "favorite": false,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "covers/58d74210a3da42c89394bca3e34e5cfb/cover.jpg",
+      "source_url": "https://www.runninghub.cn/ai-detail/2035983832586919938?inviteCode=o2jbp0c8",
+      "prompt_node_id": "116",
+      "prompt_field_name": "text",
+      "default_prompt": "亚洲女性30岁，宋朝服装",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "field_1",
+          "nodeId": "116",
+          "fieldName": "text",
+          "type": "textarea",
+          "label": "输入人物描述，可简易描写，系统会自动优化扩写",
+          "required": true,
+          "defaultValue": "亚洲女性30岁，宋朝服装",
+          "options": [],
+          "role": "prompt"
+        }
+      ]
+    },
+    {
+      "id": "e9799457133c4118b3002f822a3f25c1",
+      "name": "GPT-image2.0图生图",
+      "description": "上传图像1",
+      "webapp_id": "2046794946094571522",
+      "node_id": "3",
+      "field_name": "image",
+      "input_type": "image",
+      "output_type": "png",
+      "auto_unzip": false,
+      "category": "官方",
+      "favorite": true,
+      "accent": "#6657ff",
+      "enabled": true,
+      "cover_path": "",
+      "source_url": "https://www.runninghub.cn/ai-detail/2046794946094571522?from=new-home&tab=ai-apps&sourcePath=/ai-apps",
+      "prompt_node_id": "4",
+      "prompt_field_name": "prompt",
+      "default_prompt": "图1的角色按照图2的排版生成新的Q版萌系3D IP全案设计",
+      "sort_order": 100,
+      "inputs": [
+        {
+          "id": "field_1",
+          "nodeId": "3",
+          "fieldName": "image",
+          "type": "image",
+          "label": "上传图像1",
+          "required": true,
+          "defaultValue": "00e448f616f92525c0ed90f92ca5d8dd0e803b5d730c66ff49e2cdcff0968655.png",
+          "options": [
+            "example.png",
+            "None",
+            "example.png",
+            "keep_this_dic"
+          ]
+        },
+        {
+          "id": "field_2",
+          "nodeId": "2",
+          "fieldName": "image",
+          "type": "image",
+          "label": "上传图像2",
+          "required": true,
+          "defaultValue": "f9e0f510b5b7a29a80547147af045cc75b338af36a6eee5953ca2b9844d37c48.png",
+          "options": [
+            "example.png",
+            "None",
+            "example.png",
+            "keep_this_dic"
+          ]
+        },
+        {
+          "id": "field_3",
+          "nodeId": "4",
+          "fieldName": "aspectRatio",
+          "type": "select",
+          "label": "设置比例",
+          "required": true,
+          "defaultValue": "9:16",
+          "options": [
+            "empty",
+            "3:2",
+            "1:1",
+            "2:3",
+            "5:4",
+            "4:5",
+            "16:9",
+            "9:16",
+            "21:9",
+            "3:4",
+            "4:3"
+          ]
+        },
+        {
+          "id": "field_4",
+          "nodeId": "4",
+          "fieldName": "prompt",
+          "type": "textarea",
+          "label": "输入文本",
+          "required": true,
+          "defaultValue": "图1的角色按照图2的排版生成新的Q版萌系3D IP全案设计",
+          "options": [],
+          "role": "prompt"
+        }
+      ]
+    }
+  ],
+  "prompts": []
 }
