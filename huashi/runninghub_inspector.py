@@ -189,6 +189,7 @@ def nodes_to_inputs(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
         default_value = str(node.get("fieldValue") or "")
         if not default_value and isinstance(field_data, dict):
             default_value = str(field_data.get("default") or "")
+        options = field_options(field_data, field_name, default_value) if input_type == "select" else []
         inputs.append(
             {
                 "id": f"field_{index}",
@@ -196,9 +197,10 @@ def nodes_to_inputs(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "fieldName": field_name,
                 "type": input_type,
                 "label": label,
-                "required": True,
+                "required": is_required_input(input_type, label, node, index),
                 "defaultValue": default_value,
-                "options": field_options(field_data),
+                "options": options,
+                "role": "prompt" if is_prompt_like_input(input_type, field_name, label) else "",
             }
         )
     return inputs
@@ -218,11 +220,18 @@ def parse_field_data(raw: Any) -> Any:
     return value
 
 
-def field_options(field_data: Any) -> list[str]:
+def field_options(field_data: Any, field_name: str = "", default_value: str = "") -> list[str]:
     if isinstance(field_data, dict) and isinstance(field_data.get("options"), list):
         return [str(item) for item in field_data["options"]]
     if isinstance(field_data, list) and field_data and isinstance(field_data[0], list):
         return [str(item) for item in field_data[0]]
+    field = field_name.lower()
+    if field == "resolution":
+        return ["1k", "2k", "4k"]
+    if field == "channel":
+        return ["Third-party", "Official"]
+    if default_value:
+        return [str(default_value)]
     return []
 
 
@@ -230,15 +239,31 @@ def infer_input_type(node: dict[str, Any], field_data: Any) -> str:
     field_type = str(node.get("fieldType") or node.get("field_type") or "").upper()
     field = str(node.get("fieldName") or node.get("field_name") or "").lower()
     value = str(node.get("fieldValue") or node.get("field_value") or "").lower()
+    label = str(node.get("description") or node.get("descriptionCn") or node.get("nodeName") or "").lower()
+    if field_type in {"BOOLEAN", "BOOL"}:
+        return "checkbox"
     if field_type in {"IMAGE", "FILE"} or "image" in field or any(suffix in value for suffix in (".png", ".jpg", ".jpeg", ".webp")):
         return "image"
-    if field_type in {"LIST", "COMBO"} or field_options(field_data):
+    select_labels = ("加密方式", "压缩", "高宽比", "比例", "分辨率", "通道", "模型")
+    if field_type in {"LIST", "COMBO"} or field_options(field_data) or field in {"select", "combo"} or any(token in label for token in select_labels):
         return "select"
     if field_type in {"INT", "INTEGER", "FLOAT", "NUMBER"}:
         return "number"
     if isinstance(field_data, dict) and field_data.get("multiline"):
         return "textarea"
     return "text"
+
+
+def is_required_input(input_type: str, label: str, node: dict[str, Any], index: int) -> bool:
+    raw_required = node.get("required")
+    if isinstance(raw_required, bool):
+        return raw_required
+    text = f"{label} {node.get('description') or ''}".lower()
+    if any(token in text for token in ("选填", "可选", "非必填", "不用", "不上传", "optional")):
+        return False
+    if input_type in {"image", "file"} and index > 1:
+        return False
+    return True
 
 
 def extract_string_field(text: str, field_name: str) -> str:
@@ -354,6 +379,14 @@ def pick_prompt_node(nodes: list[dict[str, Any]], image_node: dict[str, Any] | N
         if any(token in field for token in ("prompt", "text", "positive")):
             return node
     return None
+
+
+def is_prompt_like_input(input_type: str, field_name: str, label: str) -> bool:
+    if input_type not in {"text", "textarea"}:
+        return False
+    field = field_name.lower()
+    label_value = label.lower()
+    return "prompt" in field or any(token in label_value for token in ("提示词", "prompt", "输入文本"))
 
 
 def guess_output_type(text: str) -> str:

@@ -1,5 +1,6 @@
 .env
 data/
+pose/
 logs/
 __pycache__/
 *.pyc
@@ -11,5 +12,6 @@ __pycache__/
 .DS_Store
 ._*
 .superpowers/
+.playwright-cli/
 
 docs/superpowers/

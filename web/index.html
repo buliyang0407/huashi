@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>画室</title>
-    <link rel="stylesheet" href="/styles.css?v=20260515-backup1" />
+    <link rel="stylesheet" href="/styles.css?v=20260523-pose2" />
   </head>
   <body>
     <div id="app" class="phone-shell" data-view="home">
@@ -16,21 +16,26 @@
           <h1 id="pageTitle">画室</h1>
           <p id="pageHint">样式广场</p>
         </div>
-        <a class="round-action" href="/admin" aria-label="添加样式">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-        </a>
+        <span class="topbar-spacer" aria-hidden="true"></span>
       </header>
 
       <main>
         <section class="screen" data-screen="home">
-          <label class="search-box">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
-            <input id="searchInput" type="search" placeholder="搜索样式" />
-          </label>
-          <label class="category-select">
-            <span>分类</span>
-            <select id="categorySelect"></select>
-          </label>
+          <div class="home-filter-bar">
+            <label class="search-box compact-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
+              <input id="searchInput" type="search" placeholder="搜索" />
+            </label>
+            <label class="category-select">
+              <select id="categorySelect" aria-label="分类"></select>
+            </label>
+            <label class="category-select">
+              <select id="sortSelect" aria-label="排序">
+                <option value="new">最新</option>
+                <option value="category">分类</option>
+              </select>
+            </label>
+          </div>
           <section id="favoriteSection" class="style-section" hidden>
             <div class="section-heading compact"><span>常用</span></div>
             <div id="favoriteGrid" class="style-grid favorite-grid"></div>
@@ -67,6 +72,62 @@
           </div>
           <div id="taskList" class="record-list"></div>
         </section>
+
+        <section class="screen" data-screen="gallery">
+          <div class="album-toolbar">
+            <div id="albumFolderList" class="album-folder-list"></div>
+            <div class="album-actions">
+              <button class="secondary-button compact-action" id="newAlbumFolderButton" type="button">新建文件夹</button>
+              <label class="secondary-button compact-action album-upload-button">
+                上传图片
+                <input id="albumUploadInput" type="file" accept="image/*" />
+              </label>
+            </div>
+          </div>
+          <div id="artworkGallery" class="artwork-gallery empty-state">暂无作品</div>
+        </section>
+
+        <section class="screen" data-screen="prompts">
+          <div class="prompt-toolbar">
+            <label class="search-box">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
+              <input id="promptSearchInput" type="search" placeholder="搜索标题、正文、标签" />
+            </label>
+            <button class="secondary-button" id="newPromptButton" type="button">新建</button>
+          </div>
+          <form id="promptForm" class="prompt-form hidden">
+            <input id="promptIdInput" type="hidden" />
+            <label class="field-block">
+              <span>名称</span>
+              <input id="promptTitleInput" required placeholder="例如：电影感海报提示词" />
+            </label>
+            <label class="field-block">
+              <span>提示词</span>
+              <textarea id="promptContentInput" rows="7" required placeholder="把你觉得好的提示词粘贴到这里"></textarea>
+            </label>
+            <input id="promptSamplePathInput" type="hidden" />
+            <div class="prompt-sample-field">
+              <button class="sample-picker" id="choosePromptSampleButton" type="button">
+                <span id="promptSamplePreview">配图</span>
+              </button>
+              <button class="tiny-button" id="clearPromptSampleButton" type="button">清除配图</button>
+            </div>
+            <label class="field-block">
+              <span>标签</span>
+              <input id="promptTagsInput" placeholder="海报, 人像, 写实" />
+            </label>
+            <label class="check-line"><input id="promptFavoriteInput" type="checkbox" /> 设为常用</label>
+            <label class="field-block">
+              <span>备注</span>
+              <textarea id="promptNoteInput" rows="2"></textarea>
+            </label>
+            <div class="action-grid">
+              <button class="primary-button" type="submit">保存提示词</button>
+              <button class="secondary-button" id="cancelPromptButton" type="button">取消</button>
+            </div>
+          </form>
+          <div id="promptList" class="prompt-list"></div>
+        </section>
       </main>
 
       <nav class="bottom-tabs" aria-label="主导航">
@@ -78,13 +139,117 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
           记录
         </button>
+        <button class="bottom-tab" type="button" data-nav-view="gallery">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Zm3 12 3.2-3.2 2.3 2.3L16 11l3 4.2M8.5 8.5h.01" /></svg>
+          画册
+        </button>
+        <button class="bottom-tab" type="button" data-nav-view="prompts">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8a2 2 0 0 1 2 2v14l-6-3-6 3V6a2 2 0 0 1 2-2Z" /></svg>
+          提示词
+        </button>
         <a class="bottom-tab" href="/admin">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM19.4 15a1.8 1.8 0 0 0 .3 2l.1.1-2 3.4-.2-.1a1.8 1.8 0 0 0-2.1.4l-.1.1h-4l-.1-.1a1.8 1.8 0 0 0-2.1-.4l-.2.1-2-3.4.1-.1a1.8 1.8 0 0 0 .3-2l-.1-.2-2-1.1v-3.4l2-1.1.1-.2a1.8 1.8 0 0 0-.3-2L7 6.9l2-3.4.2.1a1.8 1.8 0 0 0 2.1-.4l.1-.1h4l.1.1a1.8 1.8 0 0 0 2.1.4l.2-.1 2 3.4-.1.1a1.8 1.8 0 0 0-.3 2l.1.2 2 1.1v3.4l-2 1.1Z" /></svg>
           管理
         </a>
       </nav>
+
+      <div id="promptPicker" class="drawer hidden" aria-hidden="true">
+        <div class="drawer-scrim" data-close-prompt-picker></div>
+        <section class="drawer-panel">
+          <div class="drawer-handle"></div>
+          <div class="section-heading">
+            <span>选择提示词</span>
+            <button class="tiny-button" type="button" data-close-prompt-picker>关闭</button>
+          </div>
+          <label class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
+            <input id="pickerSearchInput" type="search" placeholder="搜索提示词" />
+          </label>
+          <div id="pickerPromptList" class="prompt-list picker-list"></div>
+        </section>
+      </div>
+
+      <div id="artworkPicker" class="drawer hidden" aria-hidden="true">
+        <div class="drawer-scrim" data-close-artwork-picker></div>
+        <section class="drawer-panel artwork-picker-panel">
+          <div class="drawer-handle"></div>
+          <div class="section-heading">
+            <span>选择作品</span>
+            <button class="tiny-button" type="button" data-close-artwork-picker>关闭</button>
+          </div>
+          <div id="artworkPickerList" class="artwork-picker-grid"></div>
+        </section>
+      </div>
+
+      <div id="rewriteDrawer" class="drawer hidden" aria-hidden="true">
+        <div class="drawer-scrim" data-close-rewrite></div>
+        <section class="drawer-panel rewrite-panel">
+          <div class="drawer-handle"></div>
+          <div class="section-heading">
+            <span>AI 改写提示词</span>
+            <button class="tiny-button" type="button" data-close-rewrite>关闭</button>
+          </div>
+          <div class="rewrite-source">
+            <strong id="rewritePromptTitle">提示词</strong>
+            <p id="rewritePromptPreview"></p>
+          </div>
+          <label class="field-block">
+            <span>模型</span>
+            <select id="rewriteModelInput"></select>
+          </label>
+          <div class="rewrite-controls">
+            <label class="field-block compact-field">
+              <span>生成数量</span>
+              <select id="rewriteCountInput">
+                <option value="1">1 组</option>
+                <option value="2">2 组</option>
+                <option value="3" selected>3 组</option>
+                <option value="4">4 组</option>
+                <option value="5">5 组</option>
+              </select>
+            </label>
+            <label class="check-line rewrite-check"><input id="rewriteAutoTranslateInput" type="checkbox" checked /> 英文自动翻译</label>
+          </div>
+          <label class="field-block">
+            <span>修改想法</span>
+            <textarea id="rewriteIdeaInput" rows="4" placeholder="例如：改成微信风格，男孩，蓝色为主，保留原来的3D卡片结构"></textarea>
+          </label>
+          <button class="primary-button" id="rewriteButton" type="button">生成候选</button>
+          <div id="rewriteStatus" class="notice hidden"></div>
+          <pre id="rewriteStream" class="rewrite-stream hidden"></pre>
+          <div id="rewriteResults" class="rewrite-results"></div>
+        </section>
+      </div>
+
+      <div id="agentDrawer" class="drawer hidden" aria-hidden="true">
+        <div class="drawer-scrim" data-close-agent></div>
+        <section class="drawer-panel rewrite-panel agent-panel">
+          <div class="drawer-handle"></div>
+          <div class="section-heading">
+            <span>智能拆解</span>
+            <button class="tiny-button" type="button" data-close-agent>关闭</button>
+          </div>
+          <div class="rewrite-source">
+            <strong id="agentPromptTitle">提示词</strong>
+            <p id="agentPromptPreview"></p>
+          </div>
+          <label class="field-block">
+            <span>模型</span>
+            <select id="agentModelInput"></select>
+          </label>
+          <button class="secondary-button" id="agentAnalyzeButton" type="button">开始拆解</button>
+          <div id="agentStatus" class="notice hidden"></div>
+          <div id="agentAnalysis" class="agent-analysis"></div>
+          <label class="field-block">
+            <span id="agentInstructionLabel">修改要求</span>
+            <textarea id="agentInstructionInput" rows="4" placeholder="例如：换成印度王子，穿印度皇家服饰，场景改成夜晚月光下的皇宫，表情威严但忧郁"></textarea>
+          </label>
+          <button class="primary-button" id="agentGenerateButton" type="button">生成 1 条提示词</button>
+          <div id="agentResult" class="rewrite-results"></div>
+        </section>
+      </div>
     </div>
 
-    <script src="/app.js?v=20260515-backup1"></script>
+    <script src="/app.js?v=20260523-pose2"></script>
   </body>
 </html>

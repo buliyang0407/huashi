@@ -4,6 +4,7 @@ import json
 import mimetypes
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
@@ -25,14 +26,15 @@ class RunningHubClient:
         file_path = Path(file_path)
         boundary = "----huashi-" + uuid.uuid4().hex
         content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+        safe_filename = "upload" + (file_path.suffix.lower() if file_path.suffix else "")
         body = bytearray()
-        body.extend(f"--{boundary}\r\n".encode())
+        body.extend(f"--{boundary}\r\n".encode("ascii"))
         body.extend(
-            f'Content-Disposition: form-data; name="file"; filename="{file_path.name}"\r\n'.encode()
+            f'Content-Disposition: form-data; name="file"; filename="{safe_filename}"\r\n'.encode("ascii")
         )
-        body.extend(f"Content-Type: {content_type}\r\n\r\n".encode())
+        body.extend(f"Content-Type: {content_type}\r\n\r\n".encode("ascii"))
         body.extend(file_path.read_bytes())
-        body.extend(f"\r\n--{boundary}--\r\n".encode())
+        body.extend(f"\r\n--{boundary}--\r\n".encode("ascii"))
         response = self._request(
             "/openapi/v2/media/upload/binary",
             bytes(body),
@@ -103,11 +105,11 @@ class RunningHubClient:
     def download_file(self, url: str, destination: Path | str) -> None:
         destination = Path(destination)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        with urllib.request.urlopen(url, timeout=120) as response:
+        with urllib.request.urlopen(quote_url(url), timeout=120) as response:
             destination.write_bytes(response.read())
 
     def post_json(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
-        return self._request(path, json.dumps(payload).encode("utf-8"), {"Content-Type": "application/json"})
+        return self._request(path, json.dumps(payload, ensure_ascii=True).encode("utf-8"), {"Content-Type": "application/json"})
 
     def _request(self, path: str, data: bytes, headers: dict[str, str]) -> dict[str, Any]:
         request = urllib.request.Request(
@@ -129,3 +131,16 @@ class RunningHubClient:
         if payload.get("code") != 0:
             raise RunningHubError(f"RunningHub error: {payload}")
         return payload
+
+
+def quote_url(url: str) -> str:
+    parsed = urllib.parse.urlsplit(url)
+    return urllib.parse.urlunsplit(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            urllib.parse.quote(parsed.path, safe="/%@:"),
+            urllib.parse.quote(parsed.query, safe="=&?/%@:,+"),
+            urllib.parse.quote(parsed.fragment, safe="=&?/%@:,+"),
+        )
+    )
