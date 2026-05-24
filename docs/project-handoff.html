@@ -319,7 +319,7 @@
 
       <section id="env">
         <h2>环境变量与外部 API</h2>
-        <p>真实值在 NAS 项目目录的 <code>.env</code> 中，本仓库只保留 <code>.env.example</code> 占位。</p>
+        <p>真实值在 NAS 项目目录的 <code>.env</code> 中，本仓库只保留 <code>.env.example</code> 占位。下一位接手者如果在同一台 Mac/Codex 环境里工作，不需要用户重新提供密钥：先看本地 <code>/Users/buliyang/零星/runninghub/.env</code>，生产环境以 NAS 上的 <code>/volume1/docker/runninghub/.env</code> 为准。可以用 <code>ssh buliyang@192.168.3.71 'cd /volume1/docker/runninghub &amp;&amp; sed -n "1,120p" .env'</code> 检查变量名和值，但不要把输出贴进聊天、Git 或文档。</p>
         <table>
           <thead>
             <tr>
