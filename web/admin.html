@@ -4,7 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>画室管理</title>
-    <link rel="stylesheet" href="/styles.css?v=20260523-pose2" />
+    <link rel="stylesheet" href="/styles.css?v=20260607-icon-library" />
+    <link rel="stylesheet" href="/moon-studio.css?v=20261017-moon-1" />
   </head>
   <body>
     <div class="admin-shell">
@@ -26,8 +27,22 @@
               <input id="coverInput" name="cover" type="file" accept="image/*" />
             </label>
             <div class="admin-actions compact">
-              <button class="secondary-button" id="useDefaultCoverButton" type="button">使用默认图标</button>
+              <button class="secondary-button" id="useDefaultCoverButton" type="button">清除封面</button>
             </div>
+            <section class="icon-control">
+              <div id="iconPreview" class="icon-control-preview"></div>
+              <div class="icon-control-body">
+                <label class="admin-field">
+                  应用图标
+                  <input id="iconInput" name="icon" type="file" accept="image/*,.svg" />
+                </label>
+                <div class="admin-actions compact">
+                  <button class="secondary-button" id="chooseIconButton" type="button">从图标库选择</button>
+                  <button class="secondary-button" id="useDefaultIconButton" type="button">使用默认图标</button>
+                </div>
+                <small id="iconChoiceText">未选择专用图标</small>
+              </div>
+            </section>
             <label class="admin-field">
               RunningHub 链接
               <input id="sourceUrlInput" name="source_url" type="url" placeholder="粘贴 ai-detail 或 api-detail 链接" />
@@ -152,6 +167,21 @@
       </main>
     </div>
 
-    <script src="/admin.js?v=20260523-pose2"></script>
+    <div id="iconPicker" class="icon-picker hidden" aria-hidden="true">
+      <button id="iconPickerScrim" class="icon-picker-scrim" type="button" aria-label="关闭图标库"></button>
+      <section class="icon-picker-panel" role="dialog" aria-modal="true" aria-labelledby="iconPickerTitle">
+        <div class="section-heading">
+          <span id="iconPickerTitle">图标库</span>
+          <small>来自画册</small>
+        </div>
+        <div id="iconPickerGrid" class="icon-picker-grid"></div>
+        <div class="admin-actions">
+          <button id="closeIconPickerButton" class="secondary-button" type="button">关闭</button>
+          <a class="secondary-button" href="/#gallery">去画册上传</a>
+        </div>
+      </section>
+    </div>
+
+    <script src="/admin.js?v=20260607-icon-library"></script>
   </body>
 </html>

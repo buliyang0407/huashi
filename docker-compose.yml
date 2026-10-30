@@ -10,3 +10,6 @@ services:
     volumes:
       - ./data:/app/data
       - ./pose:/app/pose:ro
+      - ./promptscreation:/app/promptscreation:ro
+      - ./inspiration:/app/inspiration:ro
+      - ./inspiration/user-data:/app/inspiration/user-data:rw

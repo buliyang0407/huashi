@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict');
+const queue=require('../web/task-queue.js');
+const raw={paused:true,active:[{id:'a'}],pending:[{id:'b',queue_sequence:2},{id:'c',queue_sequence:3}],blocked:[],completed:[]};
+const model=queue.model(raw);
+assert.equal(model.count,3);assert.equal(model.state,'当前完成后暂停');assert.equal(model.action,'继续队列');
+assert.equal(queue.model({...raw,active:[]}).state,'已暂停，等待继续');
+assert.equal(queue.model({...raw,paused:false,blocked:[{id:'unknown'}]}).blocked,true);
+assert.equal(queue.model({}).count,0);assert.equal(raw.pending[0].id,'b');
+assert.equal(queue.parameters({input_payload:{values:{cfg:'0',lora_strength:'0.75',steps:'25',width:'512',height:'768'}}}),'512 × 768 · 25步 · CFG 0 · 权重 0.75');
+console.log('Queue presentation model: 8 assertions passed');

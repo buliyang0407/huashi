@@ -1,0 +1,7 @@
+/* Pure presentation checks: no DOM, network or user-data writes. */
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const sandbox={window:{}};vm.createContext(sandbox);vm.runInContext(fs.readFileSync('web/inspiration-presentation.js','utf8'),sandbox);const ui=sandbox.window.HuashiInspirationPresentation;
+const raw=JSON.stringify({prompt:'中文原始提示词'.repeat(30),seed:123});const e={id:'prompt:one',domain:'prompt',title:'<img src=x onerror=alert(1)>',description:'',content:raw,tags:[]};
+const before=JSON.stringify(e);const html=ui.card(e,{attributes:'data-prompt-detail="one"'});assert.equal(JSON.stringify(e),before,'display must not mutate original text');assert.ok(!html.includes('<img src=x'),'untrusted titles are escaped');assert.ok(html.includes('&lt;img'));
+for(const x of [{domain:'image',tags:['Poster','Realistic','Education']},{domain:'animation',features:['手工纸感','柔和过渡','叙事镜头']},{domain:'prompt',description:'一段很长的中文说明'.repeat(30)},{}]){const s=ui.summary(x);assert.ok(s.length>0&&Array.from(s).length<=27,'caption bounded and nonempty');}
+assert.equal(ui.summary({id:'case:544'}),'实物拆解与词汇标注，适合幼儿认知');assert.ok(!ui.card({domain:'image',thumbnail:'https://untrusted.example/x.png'}).includes('src="https://'),'local media only');console.log('PASS: immutable originals, escaped titles, bounded captions, multilingual tags, absent metadata and local media policy');

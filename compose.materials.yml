@@ -1,0 +1,7 @@
+# Optional: initialize these paths following docs/MATERIALS.md before use.
+services:
+  huashi:
+    volumes:
+      - ./material-index/portrait-materials.json:/app/web/portrait-materials.json:ro
+      - ./material-index/portrait-materials.json.gz:/app/web/portrait-materials.json.gz:ro
+      - ./material-index/portrait-thumbs:/app/web/portrait-thumbs:ro

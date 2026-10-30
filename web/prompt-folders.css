@@ -1,0 +1,104 @@
+/* Directory organization extends the existing compact prompt rows. */
+.prompt-directory-layout { display:grid; grid-template-columns:210px minmax(0,1fr); gap:24px; }
+.prompt-directory-content,.prompt-directory-sidebar { min-width:0; }
+.prompt-directory-sidebar { border-right:1px solid var(--line); padding-right:18px; }
+.prompt-directory-sidebar>details>summary { display:none; }
+.prompt-directory-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; padding-bottom:14px; }
+.prompt-directory-heading strong { font-size:12px; }
+.prompt-directory-tree details { margin:0 0 10px; }
+.prompt-directory-tree summary { cursor:pointer; color:var(--ink); font-size:12px; font-weight:600; padding:8px 0; }
+.prompt-directory-tree small { color:var(--muted); font-size:10px; margin-left:8px; font-weight:400; }
+.prompt-directory-tree button { width:100%; border:0; background:transparent; color:var(--muted); border-radius:5px; padding:9px 10px 9px 18px; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:6px; font:inherit; font-size:12px; cursor:pointer; }
+.prompt-directory-tree button span { overflow-wrap:anywhere; }
+.prompt-directory-tree button.active { background:var(--accent-wash,#e8f1f5); color:var(--accent-ink); box-shadow:inset 3px 0 currentColor; }
+.prompt-directory-tree button:hover { background:var(--surface,#f4f5f7); }
+.prompt-directory-status { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+.prompt-directory-status strong { font-size:13px; overflow-wrap:anywhere; }
+.prompt-directory-status span,.prompt-selection-tools>span { color:var(--muted); font-size:11px; }
+body .rooms-shell.phone-shell .prompt-toolbar { flex-wrap:wrap; }
+.prompt-search-all { width:100%; font-size:11px; color:var(--muted); }
+.prompt-selection-tools { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+.prompt-directory-select select { width:100%; min-width:0; }
+.prompt-folder-dialog { max-width:calc(100vw - 24px); width:460px; }
+.prompt-folder-dialog .field-block { min-width:0; }
+.prompt-folder-dialog select,.prompt-folder-dialog input { max-width:100%; }
+.prompt-folder-dialog h3 { font-size:17px; }
+.prompt-folder-dialog .room-dialog-actions { flex-wrap:wrap; }
+.prompt-folder-row-check { display:flex; align-items:center; gap:4px; color:var(--muted); font-size:10px; cursor:pointer; }
+.prompt-folder-row-check input { width:15px; height:15px; }
+.prompt-folder-path { overflow-wrap:anywhere; }
+.room-prompt-directory { padding:8px 0; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:end; }
+.room-prompt-directory .field-block { margin:0; }
+.room-prompt-directory .check-line { font-size:11px; white-space:nowrap; margin-bottom:12px; }
+.prompt-folder-recovery { border-top:1px solid var(--line); margin-top:16px; padding-top:12px; }
+.prompt-folder-recovery button { margin:5px; }
+@media (max-width:760px) {
+  .prompt-directory-layout { grid-template-columns:minmax(0,1fr); gap:14px; }
+  .prompt-directory-sidebar { border-right:0; border-bottom:1px solid var(--line); padding:0 0 12px; }
+  .prompt-directory-sidebar>details>summary { display:list-item; cursor:pointer; font-size:12px; padding:7px 0; }
+  .prompt-directory-heading { padding-top:12px; }
+  .prompt-directory-tree { max-height:300px; overflow:auto; }
+  .prompt-directory-status { margin-bottom:12px; gap:7px; }
+  .room-prompt-directory { grid-template-columns:minmax(0,1fr); gap:0; }
+  .room-prompt-directory .check-line { margin-top:8px; }
+  body .rooms-shell.phone-shell #promptList .prompt-card-actions { gap:4px; flex-wrap:wrap; max-width:85px; }
+  .prompt-folder-dialog .creation-save-form { padding:4px; }
+}
+
+.prompt-directory-layout.hidden,.room-prompt-directory[hidden],.prompt-selection-tools [hidden],.prompt-folder-dialog [hidden],.prompt-directory-status [hidden] { display:none!important; }
+.prompt-folder-dialog { color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:22px; max-height:calc(100svh - 28px); overflow:auto; }
+.prompt-folder-dialog::backdrop { background:#15242e88; }
+.prompt-folder-dialog select,.prompt-folder-dialog input { width:100%; color:var(--ink); background:var(--surface); border:1px solid var(--line-strong); padding:10px; border-radius:8px; font:inherit; }
+.prompt-folder-dialog button { color:var(--ink-soft); background:var(--surface); border:1px solid var(--line-strong); border-radius:8px; padding:8px 12px; cursor:pointer; }
+.prompt-folder-dialog .primary-button { background:var(--accent); color:white; border-color:var(--accent); }
+.prompt-folder-dialog .danger { color:#9a3d37; }
+.prompt-folder-dialog button:disabled { opacity:.5; cursor:default; }
+.prompt-directory-tree button:focus-visible,.prompt-folder-dialog button:focus-visible,.prompt-directory-select select:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+/* Compact manual library; existing directory and AI-detail controls remain available. */
+body .rooms-shell.phone-shell .prompt-directory-layout { grid-template-columns:180px minmax(0,1fr); gap:20px; }
+body .rooms-shell.phone-shell .prompt-directory-sidebar { padding-right:12px; }
+body .rooms-shell.phone-shell .prompt-directory-tree button { padding:6px 8px 6px 12px; }
+body .rooms-shell.phone-shell .prompt-directory-tree summary { padding:5px 0; }
+.prompt-library-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.prompt-library-heading h2 { margin:0; font-size:22px; }
+body .rooms-shell.phone-shell .prompt-directory-status { margin-bottom:9px; gap:10px; }
+body .rooms-shell.phone-shell .prompt-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+body .rooms-shell.phone-shell .prompt-toolbar .search-box { flex:1; min-width:140px; }
+body .rooms-shell.phone-shell .prompt-search-all { width:auto; flex:none; }
+body .rooms-shell.phone-shell .prompt-selection-tools { margin-bottom:5px; }
+body .rooms-shell.phone-shell #promptList .prompt-card { padding:7px 8px; gap:10px; box-shadow:none; border-bottom:1px solid var(--line); border-radius:0; background:transparent; }
+body .rooms-shell.phone-shell #promptList .prompt-card:hover { background:#e9eff44d; }
+body .rooms-shell.phone-shell #promptList .prompt-sample { width:38px; height:38px; border-radius:4px; }
+body .rooms-shell.phone-shell #promptList .prompt-card { grid-template-columns:38px minmax(0,1fr) auto; }
+body .rooms-shell.phone-shell #promptList .prompt-card-main { gap:2px 16px; grid-template-columns:minmax(130px,.8fr) minmax(0,1.6fr); }
+body .rooms-shell.phone-shell #promptList .prompt-card-main>small { font-size:10px; }
+.prompt-open-text { border:0; background:transparent; color:inherit; font:inherit; font-weight:650; padding:0; cursor:pointer; max-width:100%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; text-align:left; }
+.prompt-open-text:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+body .rooms-shell.phone-shell #promptList .prompt-card-actions { gap:5px; }
+body .rooms-shell.phone-shell #promptList .prompt-card-actions .tiny-button { padding:5px 8px; font-size:11px; }
+body .rooms-shell.phone-shell .prompt-editor-dialog { width:660px; max-width:calc(100vw - 24px); max-height:90dvh; border:1px solid var(--line); border-radius:12px; padding:20px; color:var(--ink); background:white; overflow:auto; box-shadow:0 20px 80px #10223033; }
+.prompt-editor-dialog::backdrop { background:#14293666; }
+.prompt-editor-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.prompt-editor-heading h3 { margin:0; font-size:17px; }
+.prompt-editor-heading span { font-size:11px; color:var(--muted); }
+body .rooms-shell.phone-shell .prompt-editor-dialog .prompt-form { margin:0; gap:10px; }
+body .rooms-shell.phone-shell .prompt-editor-dialog textarea { min-height:70px; }
+body .rooms-shell.phone-shell .prompt-editor-dialog #promptContentInput { min-height:150px; }
+body .rooms-shell.phone-shell .prompt-editor-dialog .sample-picker { width:58px; height:58px; }
+body .rooms-shell.phone-shell .prompt-editor-dialog .sample-picker img { height:56px; }
+@media(max-width:760px) {
+ body .rooms-shell.phone-shell .prompt-directory-layout { display:block; }
+ body .rooms-shell.phone-shell .prompt-toolbar { gap:7px; }
+ body .rooms-shell.phone-shell .prompt-search-all { font-size:10px; }
+ body .rooms-shell.phone-shell #promptList .prompt-card-main { display:block; }
+ .prompt-library-heading h2 { font-size:20px; }
+ body .rooms-shell.phone-shell .prompt-editor-dialog { padding:14px; }
+ .prompt-editor-heading span { display:none; }
+}
+
+body .rooms-shell.phone-shell #promptHubPanel.hidden { display:none; }
+body .rooms-shell.phone-shell .prompt-editor-dialog .prompt-form { padding:0; border:0; background:transparent; border-radius:0; box-shadow:none; }
+.prompt-optional-fields { padding:8px 0; font-size:12px; color:var(--muted); }
+.prompt-optional-fields>summary { cursor:pointer; padding:4px 0; }
+.prompt-optional-fields[open]>summary { margin-bottom:10px; }
+.prompt-optional-fields .field-block { margin-top:10px; }

@@ -1,148 +1,68 @@
 # 画室 Huashi
 
-手机优先的私人 AI 图片工作台，把 RunningHub 应用收进自己的 NAS。
+运行在本地电脑或个人 NAS 上的视觉创作工作台。当前整理版本：2026-10-30。
 
-画室的目标很简单：不再反复打开 RunningHub 官网找应用、填节点、下载结果。你把常用的 RunningHub 应用接进来，上传图片或填写参数，画室负责发起任务、轮询结果、缓存输出、自动解压 ZIP 相册，并把历史记录留在自己的机器上。
+画室分为三个空间：
 
-![Huashi mobile home](docs/assets/huashi-mobile.png)
+- **创作间**：选择 RunningHub / RunPod 画布，上传参考图，填写提示词，查看队列、历史及结果。
+- **灵感屋**：浏览自有图像与动画资料、管理提示词，以及使用独立的人像工坊。
+- **陈列室**：整理作品，浏览人物、服装和姿势参考，查看原图并作为创作输入。
 
-## 为什么做它
+人像工坊支持分类、目录筛选、搜索、分页和参考词复制。图片可装入平铺的“素材袋”，在每个上传口自行选择一张。工坊、素材袋、陈列室及选图窗口使用缩略图；大图详情和任务输入使用原图。素材袋保存在当前浏览器，不跨设备同步。浏览素材和复制参考词不依赖大模型 API。
 
-很多 AI 图像应用不是一次性的，它们会变成日常工具：换装、图片 3D 化、卡通化、微缩城市、海报生成、去水印、重打光、角色定妆照。画室把这些工作流变成一个轻量产品：
+本仓库保存应用代码、测试、工作流及构建工具。个人素材、作品、任务数据库、收藏、密钥、生成索引和缩略图不随仓库分发。没有素材或 API 配置也能启动空工作台；实际生成需要自行配置对应服务。项目面向可信的个人局域网，没有登录及多人权限体系。
 
-- 手机打开即可用，适合放在家庭 NAS 或内网小服务器。
-- 支持图片、文本、长文本、下拉选项、数字等多种输入项。
-- 支持 RunningHub 返回图片或 ZIP，ZIP 可以自动解压成相册预览。
-- 有历史记录、保存、下载、重试、删除。
-- 有后台样式管理，可以粘贴 RunningHub 链接解析应用，也可以手动微调节点参数。
-- 支持样式导出、导入和自动备份，迁移或恢复时不慌。
+## 本地启动
 
-## 当前功能
+需要 Python 3.12 及以上版本。
 
-### 手机端工作台
-
-- 首页按分类筛选样式，常用样式置顶展示。
-- 点进样式后按配置动态渲染输入表单。
-- 生成结果可预览、下载、保存到归档目录。
-- 记录页可以浏览任务状态和历史结果。
-
-### 样式管理后台
-
-- 添加、编辑、停用 RunningHub 应用。
-- 上传样式封面、设置名称、分类、排序、主题色、常用。
-- 自动解析 RunningHub 文档里的 `webapp_id`、节点、字段和输入项。
-- 私有应用解析失败时，可粘贴 RunningHub 文档中的 JSON 请求示例兜底。
-- 导出/导入样式配置；每次保存样式会自动写入 `data/backups` 快照。
-
-![Huashi admin](docs/assets/huashi-admin.png)
-
-### 数据边界
-
-本项目默认把运行数据放在 `data/`：
-
-- `data/db.sqlite`: 样式与任务数据库
-- `data/uploads`: 输入文件
-- `data/cache`: RunningHub 输出缓存
-- `data/archive`: 手动保存的结果
-- `data/covers`: 样式封面
-- `data/backups`: 样式配置自动备份
-
-`data/` 不进入 Git，避免把私人生成图、历史记录或封面误传出去。仓库里的 `examples/huashi-apps.example.json` 是一份样式配置示例，不含 API key。
-
-## 快速启动
-
-复制环境变量文件：
-
-```bash
-cp .env.example .env
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m huashi.server --host 127.0.0.1 --port 8787 --data data
 ```
 
-填写 RunningHub API key：
+打开 <http://127.0.0.1:8787/>。启动会在自己的 `data/` 下创建数据库和内置图标，不写入个人素材目录。macOS 用户也可以在激活虚拟环境后使用启动脚本。
 
-```text
-RUNNINGHUB_API_KEY=你的 key
+需要生成服务时，在自己的部署目录从 `.env.example` 创建 `.env`，手动配置必要变量；不需要的服务保持空白。请勿复制他人的密钥或提交真实配置。
+
+## Docker
+
+```sh
+mkdir -p data pose promptscreation inspiration/user-data
+docker build -t huashi:local .
 ```
 
-本机启动：
+在新部署目录准备自己的 `.env` 后，运行 `docker compose up -d --build`，访问宿主机的 8787 端口。Compose 将运行数据和素材保存在宿主目录，素材挂载为只读。代码更新和数据库迁移前先做好一致备份，尤其不要拿空目录覆盖现有部署的数据。
 
-```bash
-python3 -m huashi.server --host 127.0.0.1 --port 8787 --data data
+详细说明见 [部署与数据边界](docs/DEPLOYMENT.md)；个人素材索引及缩略图的构建见 [素材构建](docs/MATERIALS.md)。
+
+## 配置
+
+| 配置 | 用途 |
+| --- | --- |
+| `RUNNINGHUB_API_KEY` | RunningHub 任务服务，可留空 |
+| `RUNPOD_API_KEY`、`RUNPOD_QWEN_ENDPOINT_ID` | RunPod Serverless 任务，可留空 |
+| `RUNPOD_PROXY_URL` | 当前 RunPod 客户端要求的独立 HTTP 代理，不改变其他服务的网络配置 |
+| `HUASHI_POSE_DIR` | 姿势及服装参考目录；默认 `pose` |
+| `HUASHI_FACE_LIBRARY_DIR` | 人物参考目录；默认 `data/faces` |
+| `HUASHI_PORTRAIT_MATERIAL_DIR` | 旧人像工坊素材；默认 `promptscreation` |
+
+旧提示词模型集成代码保留兼容性，其配置为选填。新的工坊和素材袋不调用这些模型。RunPod 的模型权重、远端 Worker、网络卷和商业服务不包含在仓库中，生成费用由使用者自行控制。
+
+## 验证
+
+```sh
+.venv/bin/python -m unittest discover -s tests -v
+node --test tests/*.cjs scripts/test_*.cjs
 ```
 
-打开：
+在 macOS 上，部分文件边界测试需要使用解析后的临时目录，可运行 `TMPDIR=/private/tmp .venv/bin/python -m unittest discover -s tests -v`。测试使用临时目录和模拟客户端，不需要真实密钥或付费生成。
 
-```text
-http://127.0.0.1:8787
-```
+公开测试不包含私人素材包的历史审稿检查及 NAS 特定数量快照；改以合成图片验证索引、缩略图和原图保全。发布验证详情见 [版本记录](CHANGELOG.md)。
 
-后台：
+## 资源与维护
 
-```text
-http://127.0.0.1:8787/admin
-```
+本仓库不提供第三方素材图库或模型权重。接入自有素材时应保留来源及适用条款，见 [第三方资源说明](THIRD_PARTY_NOTICES.md)。目前未新增或变更项目许可证。
 
-macOS 上也可以双击：
-
-- `启动画室.command`
-- `停止画室.command`
-
-## Docker 部署
-
-```bash
-docker compose up -d --build
-```
-
-默认端口：
-
-```text
-http://localhost:8787
-```
-
-建议把 `data/` 映射为持久化目录。家庭 NAS 内网使用时，可以直接映射到共享文件夹下的应用目录。
-
-## 备份与迁移
-
-在后台点击“导出样式”会得到一个 JSON 备份，包含样式名称、分类、RunningHub 应用 ID、输入项配置、输出类型、常用状态等。
-
-导入备份时，同 ID 样式会被覆盖。导入前后系统都会自动在 `data/backups` 里留快照。
-
-## 项目结构
-
-```text
-huashi/
-  server.py              # HTTP 服务与 API
-  storage.py             # SQLite 数据模型
-  service.py             # 任务编排、下载、解压、备份
-  runninghub.py          # RunningHub API 客户端
-  runninghub_inspector.py# RunningHub 链接/请求示例解析
-web/
-  index.html             # 手机端主界面
-  admin.html             # 样式管理后台
-  app.js / admin.js
-  styles.css
-docs/
-  project-handoff.html   # 给后续 AI/设计师接手的项目说明
-examples/
-  huashi-apps.example.json
-```
-
-## 开发检查
-
-```bash
-python3 -m unittest discover -s tests -v
-python3 -m py_compile huashi/*.py
-node --check web/app.js
-node --check web/admin.js
-```
-
-## 路线图
-
-- 更强的移动端 UI：样式市场、收藏、搜索和生成态还可以继续打磨。
-- 更完整的输入控件：多图上传、滑块、开关、枚举组、参数模板。
-- 更稳的 RunningHub 解析：从文档页自动提取更多字段，减少手动修正。
-- 多用户或 PIN 保护：目前更适合内网个人使用。
-- 自动清理策略：缓存、归档、备份可以按空间或时间规则管理。
-
-## 适用场景
-
-画室不是一个通用云平台，它更像“自己的 AI 图片遥控器”：应用跑在 RunningHub，入口和结果留在自己的 NAS。
+更新经过分支和 Pull Request 审阅。GitHub 代码更新不自动修改任何 NAS 部署。

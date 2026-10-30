@@ -1,22 +1,32 @@
 import unittest
 
-from huashi.prompt_ai import PROMPT_MODELS, build_system_prompt, split_candidates
+from huashi.prompt_ai import PROMPT_MODELS, aihubmix_error_message, build_system_prompt, get_prompt_model, split_candidates
 
 
 class PromptAITest(unittest.TestCase):
-    def test_prompt_models_exclude_gemma_and_include_grok(self):
+    def test_prompt_models_exclude_gemma_and_include_grok41_default(self):
         ids = [model.id for model in PROMPT_MODELS]
 
         self.assertEqual(
             ids,
             [
+                "aihubmix-grok",
                 "ollama-qwen-vl",
                 "ollama-qwen-9b",
                 "ollama-qwen-4b",
-                "aihubmix-grok",
+                "aihubmix-qwen-max",
             ],
         )
         self.assertNotIn("gemma", " ".join(model.model for model in PROMPT_MODELS).lower())
+        self.assertEqual(get_prompt_model("").id, "aihubmix-grok")
+        self.assertEqual(get_prompt_model("").label, "Grok4.1")
+        self.assertEqual(get_prompt_model("").model, "grok-4-1-fast-non-reasoning")
+
+    def test_aihubmix_error_message_explains_disabled_model_key(self):
+        message = aihubmix_error_message('{"error":{"message":"this key is not enabled"}}')
+
+        self.assertIn("AIHubMix", message)
+        self.assertIn("当前模型", message)
 
     def test_split_candidates_handles_numbered_lines(self):
         text = """

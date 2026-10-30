@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" role="img" aria-label="双图编辑">
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1">
+      <stop stop-color="#272e59"/>
+      <stop offset="1" stop-color="#58539d"/>
+    </linearGradient>
+    <linearGradient id="sheet" x2="1" y2="1">
+      <stop stop-color="#fff"/>
+      <stop offset="1" stop-color="#e5e7ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" rx="34" fill="url(#bg)"/>
+  <circle cx="80" cy="94" r="62" fill="#b7a8ff" opacity=".11"/>
+  <circle cx="326" cy="398" r="118" fill="#87c9ff" opacity=".10"/>
+  <rect x="52" y="125" width="184" height="214" rx="20" fill="url(#sheet)" transform="rotate(-8 144 232)"/>
+  <rect x="170" y="155" width="184" height="214" rx="20" fill="url(#sheet)" transform="rotate(8 262 262)"/>
+  <circle cx="138" cy="229" r="47" fill="#f36a75"/>
+  <rect x="231" y="228" width="79" height="79" rx="12" fill="#5189e8"/>
+  <path d="m199 392 12-29 29-12-29-12-12-29-12 29-29 12 29 12z" fill="#ffe3a0"/>
+  <circle cx="199" cy="351" r="4" fill="#fff"/>
+</svg>

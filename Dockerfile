@@ -1,8 +1,13 @@
-FROM docker.m.daocloud.io/library/python:3.12-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY huashi ./huashi
+# Startup copy2 preserves asset modes; keep the 32 existing v6 icons at NAS baseline.
+COPY --chmod=0770 huashi/assets/icon_library/*-v6.png ./huashi/assets/icon_library/
 COPY web ./web
 COPY .env.example ./.env.example
 

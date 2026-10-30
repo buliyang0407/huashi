@@ -1,0 +1,147 @@
+/* Selected contact-sheet design. Opt in only on inspiration-related screens. */
+body:has(.screen.active[data-screen="inspiration"]),body:has(.screen.active[data-screen="prompts"]),body:has(.screen.active[data-screen="portrait"]) { background:#f5f8fa; }
+body .rooms-shell.phone-shell:has(.screen.active:is([data-screen="inspiration"],[data-screen="prompts"],[data-screen="portrait"])) { max-width:1600px; padding:86px 32px 36px; }
+body .rooms-shell.phone-shell #roomInspiration.inspiration-browser { --ink:#253440; --muted:#77848e; --line:#e0e8ed; }
+.reference-topline { display:flex; gap:16px; align-items:center; margin:0 0 16px; min-height:46px; }
+.reference-domains { display:flex; gap:6px; flex-shrink:0; align-items:center; }
+.reference-domains a { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:8px 15px; border-radius:6px; text-decoration:none; color:#506372;  font-size:13px; font-weight:550; }
+.reference-domains a.active { color:#285c72; background:#dfedf3; }
+body .rooms-shell.phone-shell :is(#roomInspiration,#promptLibraryPanel) .reference-topline .search,
+body .rooms-shell.phone-shell #promptLibraryPanel .reference-topline .search-box { flex:1; width:auto; max-width:none; min-width:140px; height:42px; min-height:42px; margin:0; padding:0 14px; border:1px solid #dce5eb; border-radius:6px; background:#fff9; box-shadow:none; }
+body .rooms-shell.phone-shell :is(#roomInspiration,#promptLibraryPanel) .reference-topline :is(.reference-favorites,.primary-button) { min-height:38px; padding:8px 12px; font-size:12px; white-space:nowrap; border-radius:6px; }
+body .rooms-shell.phone-shell #roomInspiration .reference-filterline { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:0 0 14px; color:#77848e; font-size:11px; }
+body .rooms-shell.phone-shell #roomInspiration .reference-filterline .category-tabs { display:flex; align-items:center; margin:0; padding:0; gap:4px; }
+body .rooms-shell.phone-shell #roomInspiration .category-tabs :is(a,button) { padding:6px 10px; min-height:32px; border:1px solid transparent; border-radius:5px; background:transparent; font:inherit; font-size:12px; color:#667f8c; white-space:nowrap; }
+body .rooms-shell.phone-shell #roomInspiration .category-tabs .active { background:#e2edf3; border-color:#d5e5ee; color:#326d85; }
+.reference-count { margin-left:auto; white-space:nowrap; font-size:11px; }
+body .rooms-shell.phone-shell #roomInspiration .reference-filterline select { min-height:32px; max-width:190px; padding:5px 9px; border:1px solid #dce5eb; border-radius:5px; background:#fff; color:#667f8c; font-size:11px; }
+body .rooms-shell.phone-shell #roomInspiration .reference-filterline .animation-toolbar { display:flex; gap:8px; flex:1; justify-content:flex-end; flex-wrap:wrap; }
+body .rooms-shell.phone-shell #roomInspiration .reference-filterline .button { min-height:30px; padding:4px 9px; font-size:11px; }
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration .inspiration-card-grid) { grid-template-columns:repeat(6,minmax(0,1fr)); gap:16px; }
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card { border:1px solid #e4ebef; border-radius:6px; background:#fff9; box-shadow:none; overflow:hidden; }
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card:hover,
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card:focus-within { border-color:#78a2b6; background:#fff; box-shadow:0 0 0 1px #a5c8d522; }
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card .reference-cover { position:relative; height:auto; aspect-ratio:1; width:100%; flex:none; display:block; border:0; padding:0; margin:0; border-radius:0; background:#edf2f5; cursor:pointer; overflow:hidden; }
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card .reference-cover img { display:block; height:100%; width:100%; object-fit:contain; transform:none; }
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card .reference-type { position:absolute; top:9px; left:9px; width:auto; height:auto; margin:0; padding:3px 7px; border:1px solid #dce7ee99; border-radius:5px; background:#f8fcfff0; color:#4c6d7d; font-size:10px; line-height:1.4; font-weight:500; pointer-events:none; }
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card .reference-card-copy { display:block; flex:none; gap:0; padding:9px 10px 10px; }
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card .inspiration-card-title { display:block; height:auto; min-height:0; margin:0 0 4px; padding:0;  font-size:13px; font-weight:550; line-height:1.55; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; }
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card .inspiration-card-title button { display:block; max-width:100%; width:100%; margin:0; padding:0; border:0; background:none; text-align:left; color:inherit; font:inherit; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card .inspiration-card-summary { display:block; height:auto; min-height:0; margin:0; padding:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:12px; line-height:1.6; color:#84919a; }
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card .reference-text-cover { display:flex; width:100%; height:100%; flex-direction:column; justify-content:center; align-items:center; gap:10px; color:#4d7283; background:#eaf1f5; padding:18px; text-align:center; }
+.reference-text-cover small { font-size:10px; color:#8a9da8; }
+.reference-text-cover strong { font-size:20px; font-weight:550; }
+.reference-text-cover span { font-size:10px; color:#8a9da8; }
+.reference-card-select { display:flex; align-items:center; gap:6px; padding:5px 10px 9px; font-size:11px; color:var(--muted); }
+.reference-card:has([data-select-prompt]:checked) { outline:2px solid #326d85; outline-offset:1px; }
+/* Existing personal folders and editors remain available, with the directory panel collapsed by default. */
+body .rooms-shell.phone-shell .screen[data-screen="prompts"]>.room-subnav { display:none; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-library-heading { display:none; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-toolbar.reference-topline { gap:16px; margin:0 0 12px; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-directory-sidebar { float:left; width:auto; min-width:130px; max-width:100%; margin:0 12px 12px 0; padding:7px 12px; background:transparent; border:1px solid #dce5eb; border-radius:5px; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-directory-sidebar:has(#promptDirectoryPanel[open]) { float:none; width:100%; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-directory-sidebar summary { cursor:pointer; font-size:12px; color:#506f80; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-directory-status { min-height:32px; display:flex; align-items:center; margin:0 0 10px; font-size:12px; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-selection-tools { display:flex; align-items:center; gap:10px; flex-wrap:wrap; clear:both; margin:0 0 12px; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-selection-tools .check-line { margin:0; gap:6px; font-size:11px; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-selection-tools .tiny-button { padding:4px 9px; min-height:28px; font-size:11px; }
+/* The shared detail modal matches the selected visual while keeping source-specific functions behind More. */
+#inspirationDetail.reference-detail { width:min(880px,calc(100vw - 40px)); max-width:calc(100vw - 24px); max-height:calc(100dvh - 40px); padding:0; border:1px solid #e0e8ed; border-radius:9px; color:#253440; background:#fff; box-shadow:0 22px 70px #263d4930; overflow:auto; }
+#inspirationDetail.reference-detail::backdrop { background:#e6edf344; backdrop-filter:blur(1px); }
+#inspirationDetail.reference-detail .reference-close { position:absolute; z-index:3; right:15px; top:12px; display:grid; place-items:center; width:28px; height:28px; min-height:0; margin:0; padding:0; border:0; background:transparent; color:#536f7e; font-size:25px; cursor:pointer; }
+#inspirationDetail.reference-detail .reference-detail-main { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); align-items:start; gap:28px; padding:26px; }
+#inspirationDetail.reference-detail .reference-media { min-width:0; padding:18px 14px 12px; border-radius:5px; background:#f1f6f9; text-align:center; }
+#inspirationDetail.reference-detail .detail-full-image { display:block; width:100%; margin:0; padding:0; border:0; background:transparent; cursor:zoom-in; }
+#inspirationDetail.reference-detail .detail-image { display:block; width:100%; height:440px; max-height:calc(100dvh - 190px); object-fit:contain; background:transparent; border-radius:0; }
+#inspirationDetail.reference-detail .reference-information { min-width:0; padding-top:20px; }
+#inspirationDetail.reference-detail .reference-information>h2 { margin:0 25px 10px 0; font-size:23px; line-height:1.5; font-weight:550; }
+#inspirationDetail.reference-detail .detail-tags { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 24px; }
+#inspirationDetail.reference-detail .detail-tags span { display:block; padding:3px 7px; border-radius:4px; background:#e8f2f6; color:#5e8394; font-size:11px; }
+#inspirationDetail.reference-detail h3 { margin:0 0 10px; color:#354d5c; font-size:14px; font-weight:550; }
+#inspirationDetail.reference-detail .reference-features { border-bottom:1px solid #e8edf1; padding-bottom:20px; margin-bottom:20px; }
+#inspirationDetail.reference-detail .reference-features p { margin:0; font-size:13px; line-height:1.8; color:#708593; }
+#inspirationDetail.reference-detail .detail-language { display:flex; flex-wrap:wrap; gap:5px; margin:0 0 8px; }
+#inspirationDetail.reference-detail .detail-language button { padding:4px 7px; border:1px solid #e2e9ee; background:#fff; border-radius:4px; color:#6a8594; font-size:11px; cursor:pointer; }
+#inspirationDetail.reference-detail .detail-language button.active { color:#326d85; background:#eaf3f7; }
+#inspirationDetail.reference-detail .detail-prompt { min-height:90px; max-height:145px; overflow:auto; padding:13px 14px; margin:0; border:0; border-radius:5px; background:#f5f8fa; color:#536776; font:13px/1.8 "PingFang SC",system-ui,sans-serif; white-space:pre-wrap; overflow-wrap:anywhere; }
+#inspirationDetail.reference-detail .reference-primary-actions { display:flex; flex-wrap:wrap; gap:7px; margin-top:26px; }
+#inspirationDetail.reference-detail .button { min-height:36px; padding:7px 10px; border:1px solid #dce5eb; border-radius:5px; color:#48687a; background:#fff; font-size:12px; line-height:1.5; text-decoration:none; cursor:pointer; }
+#inspirationDetail.reference-detail .button.primary { background:#326d85; border-color:#326d85; color:#fff; }
+#inspirationDetail.reference-detail .reference-media-actions { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:7px; padding-top:12px; }
+#inspirationDetail.reference-detail .reference-more { margin-top:18px; padding-top:14px; border-top:1px solid #edf1f4; color:#81929d; font-size:11px; }
+#inspirationDetail.reference-detail .reference-more>summary { cursor:pointer; }
+#inspirationDetail.reference-detail .reference-more .detail-actions { gap:6px; margin:12px 0; }
+#inspirationDetail.reference-detail .reference-more p { font-size:12px; line-height:1.8; white-space:pre-wrap; overflow-wrap:anywhere; }
+#inspirationDetail.reference-detail .reference-provenance { display:block; margin:10px 0 0; font-size:10px; line-height:1.7; color:#8a9ba6; }
+#inspirationDetail.reference-detail .reference-source-text { margin:12px 0; }
+#inspirationDetail.reference-detail .reference-no-media { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:400px; gap:14px; padding:20px; color:#698798; }
+#inspirationDetail.reference-detail .reference-no-media small { font-size:11px; }
+#inspirationDetail.reference-detail .reference-no-media strong { font-size:20px; line-height:1.7; }
+#inspirationDetail.reference-detail .reference-no-media p { font-size:12px; line-height:1.8; }
+#inspirationDetail.reference-detail .animation-player video { display:block; width:100%; max-height:440px; background:#182632; }
+#inspirationDetail.reference-detail .variant-list { margin:14px 0; }
+#inspirationDetail.reference-detail .variant-card { padding:10px; border:1px solid #e5ebef; margin:10px 0; border-radius:5px; }
+#inspirationDetail.reference-detail :is(button,a,summary):focus-visible,.reference-domains a:focus-visible { outline:2px solid #69a2bd; outline-offset:2px; }
+#inspirationDetail.reference-detail [hidden] { display:none!important; }
+@media(min-width:1601px) { body .rooms-shell.phone-shell :is(#promptList,#roomInspiration .inspiration-card-grid) { grid-template-columns:repeat(6,minmax(0,1fr)); } }
+@media(max-width:1250px) { body .rooms-shell.phone-shell :is(#promptList,#roomInspiration .inspiration-card-grid) { grid-template-columns:repeat(5,minmax(0,1fr)); } }
+@media(max-width:1050px) { body .rooms-shell.phone-shell :is(#promptList,#roomInspiration .inspiration-card-grid) { grid-template-columns:repeat(4,minmax(0,1fr)); } .reference-topline { gap:10px; } .reference-domains a { padding:7px 11px; } }
+@media(max-width:850px) {
+  body .rooms-shell.phone-shell:has(.screen.active:is([data-screen="inspiration"],[data-screen="prompts"],[data-screen="portrait"])) { padding:94px 20px 85px; }
+  body .rooms-shell.phone-shell :is(#promptList,#roomInspiration .inspiration-card-grid) { grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+  .reference-topline { flex-wrap:wrap; gap:10px; }
+  body .rooms-shell.phone-shell :is(#roomInspiration,#promptLibraryPanel) .reference-topline :is(.search,.search-box) { order:2; min-width:70%; }
+  .reference-domains { flex:1; }
+  #inspirationDetail.reference-detail .reference-detail-main { gap:20px; padding:20px; }
+  #inspirationDetail.reference-detail .detail-image { height:390px; }
+}
+@media(max-width:600px) {
+  body .rooms-shell.phone-shell:has(.screen.active:is([data-screen="inspiration"],[data-screen="prompts"],[data-screen="portrait"])) { padding:88px 14px 88px; }
+  body .rooms-shell.phone-shell :is(#promptList,#roomInspiration .inspiration-card-grid) { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .reference-domains { gap:4px; }
+  .reference-domains a { min-height:36px; padding:6px 10px; font-size:12px; }
+  body .rooms-shell.phone-shell :is(#roomInspiration,#promptLibraryPanel) .reference-topline :is(.search,.search-box) { min-width:100%; }
+  body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card .reference-card-copy { padding:8px; }
+  body .rooms-shell.phone-shell #roomInspiration .reference-filterline { gap:7px; }
+  body .rooms-shell.phone-shell #roomInspiration .reference-filterline .category-tabs { max-width:100%; overflow:auto; }
+  body .rooms-shell.phone-shell #roomInspiration .reference-filterline .animation-toolbar { justify-content:flex-start; }
+  body .rooms-shell.phone-shell #roomInspiration .reference-filterline select { max-width:145px; }
+  #inspirationDetail.reference-detail { width:calc(100vw - 20px); max-height:calc(100dvh - 20px); }
+  #inspirationDetail.reference-detail .reference-detail-main { display:flex; flex-direction:column; gap:16px; padding:16px; }
+  #inspirationDetail.reference-detail .reference-media { width:100%; padding:14px 10px 10px; }
+  #inspirationDetail.reference-detail .detail-image { height:270px; max-height:38dvh; }
+  #inspirationDetail.reference-detail .reference-information { width:100%; padding:0; }
+  #inspirationDetail.reference-detail .reference-information>h2 { font-size:20px; }
+  #inspirationDetail.reference-detail .detail-tags { margin-bottom:16px; }
+  #inspirationDetail.reference-detail .reference-features { padding-bottom:14px; margin-bottom:14px; }
+  #inspirationDetail.reference-detail .reference-primary-actions { margin-top:16px; }
+  #inspirationDetail.reference-detail .reference-no-media { min-height:180px; }
+}
+/* Visual comparison pass: align the compact header and lightbox with the selected mock. */
+@media(min-width:851px) {
+ body .rooms-shell.phone-shell:has(.screen.active:is([data-screen="inspiration"],[data-screen="prompts"],[data-screen="portrait"])) { padding-top:90px; }
+ body .rooms-shell.phone-shell:has(.screen.active:is([data-screen="inspiration"],[data-screen="prompts"],[data-screen="portrait"])) .studio-nav { height:68px; min-height:68px; padding:0 44px; }
+}
+#inspirationDetail.reference-detail { width:min(800px,calc(100vw - 40px)); }
+#inspirationDetail.reference-detail::backdrop { backdrop-filter:none; background:#edf3f733; }
+#inspirationDetail.reference-detail .reference-information>h2 { font-size:24px; }
+#inspirationDetail.reference-detail .reference-features p { font-size:14px; }
+#inspirationDetail.reference-detail .detail-prompt { font-size:14px; }
+#inspirationDetail.reference-detail .reference-primary-actions .button { min-height:42px; padding:9px 12px; font-size:13px; }
+@media(min-width:1100px) { #inspirationDetail.reference-detail { position:fixed; inset:0; margin:auto max(24px,10vw) auto auto; } }
+@media(max-width:600px) { #inspirationDetail.reference-detail .reference-information>h2 { font-size:20px; } }
+
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-directory-sidebar>details>summary { display:list-item; padding:0; }
+/* Keep close reachable when a long prompt or More section is scrolled on a phone. */
+#inspirationDetail.reference-detail .reference-close { position:sticky; top:10px; right:auto; margin:10px 12px -38px auto; background:#fff; }
+body .rooms-shell.phone-shell #roomInspiration .reference-topline .reference-global-filter { min-height:40px; width:122px; flex-shrink:0; padding:6px 9px; margin:0; border:1px solid #dce5eb; border-radius:6px; background:#fff9; color:#667f8c; font-size:11px; }
+@media(max-width:1100px) {
+ body .rooms-shell.phone-shell #roomInspiration .reference-topline:has(.reference-global-filter) { flex-wrap:wrap; }
+ body .rooms-shell.phone-shell #roomInspiration .reference-topline:has(.reference-global-filter) .reference-domains { flex:1; }
+ body .rooms-shell.phone-shell #roomInspiration .reference-topline:has(.reference-global-filter) .search { order:2; flex-basis:100%; }
+ body .rooms-shell.phone-shell #roomInspiration .reference-topline .reference-global-filter { order:3; width:calc((100% - 20px)/3); }
+}
+@media(max-width:899px) {
+ body .rooms-shell.phone-shell:has(.screen.active:is([data-screen="inspiration"],[data-screen="prompts"],[data-screen="portrait"])) { padding-top:20px; }
+ body .rooms-shell.phone-shell:has(.screen.active:is([data-screen="inspiration"],[data-screen="prompts"],[data-screen="portrait"])) .topbar { margin-bottom:14px; }
+}

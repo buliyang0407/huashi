@@ -12,7 +12,9 @@ class StorageTest(unittest.TestCase):
             store.initialize()
 
             apps = store.list_apps()
-            self.assertEqual([app["id"] for app in apps], ["effect-png", "private-zip"])
+            self.assertEqual([app["id"] for app in apps], ["effect-png", "private-zip", "runpod-noctq-v4-text-to-image", "runpod-noctq-v4-lora-text-to-image", "runpod-noctq-v4-single-image-edit", "runpod-noctq-v4-lora-single-image-edit", "runpod-noctq-v4-lora-pose-transfer"])
+            self.assertEqual(apps[2]["provider"], "runpod")
+            self.assertEqual(apps[2]["workflow_key"], "noctq-v4-text-to-image")
             self.assertEqual(apps[0]["name"], "3D微缩模型转换器")
             self.assertEqual(store.get_app("private-zip")["output_type"], "zip")
             self.assertEqual(store.get_app("private-zip")["name"], "高级换装")
@@ -86,6 +88,7 @@ class StorageTest(unittest.TestCase):
                     "favorite": "on",
                     "enabled": "on",
                     "cover_path": "covers/avatar/cover.png",
+                    "icon_path": "albums/icons/avatar.svg",
                     "prompt_node_id": "12",
                     "prompt_field_name": "prompt",
                     "default_prompt": "清新",
@@ -94,6 +97,7 @@ class StorageTest(unittest.TestCase):
 
             self.assertEqual(app["name"], "真人照片卡通化")
             self.assertEqual(app["cover_url"], "/files/covers/avatar/cover.png")
+            self.assertEqual(app["icon_url"], "/files/albums/icons/avatar.svg")
             self.assertTrue(app["favorite"])
             self.assertEqual([item["type"] for item in app["inputs"]], ["image", "textarea"])
 

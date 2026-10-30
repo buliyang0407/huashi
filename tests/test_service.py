@@ -4,6 +4,7 @@ import zipfile
 from pathlib import Path
 
 from huashi.service import HuashiService
+from huashi.service import clean_runninghub_traceback
 from huashi.runninghub import RunningHubError
 from huashi.runninghub import quote_url
 from huashi.storage import HuashiStore
@@ -44,7 +45,26 @@ class MissingKeyClient:
         raise RunningHubError("RUNNINGHUB_API_KEY is not configured.")
 
 
+class AuditFailureClient(FakeRunningHubClient):
+    api_key = "secret-key"
+
+    def wait_for_success(self, task_id, poll_interval=5, timeout=600):
+        raise RunningHubError(f"RunningHub task failed: {task_id}")
+
+    def get_outputs(self, task_id):
+        raise RunningHubError(
+            "RunningHub error: {'code': 805, 'msg': 'APIKEY_TASK_STATUS_ERROR', "
+            "'data': {'failedReason': {'exception_type': 'audit.RHAuditException', "
+            "'exception_message': 'Porn', 'traceback': '[\"RunningHub平台禁止以下内容:\\n\", \" * 色情\\n\"]'}}}"
+        )
+
+
 class ServiceTest(unittest.TestCase):
+    def test_clean_runninghub_traceback_accepts_literal_list_strings(self):
+        value = "['RunningHub平台禁止以下内容:\\n', ' * 色情\\n']"
+
+        self.assertEqual(clean_runninghub_traceback(value), "RunningHub平台禁止以下内容: * 色情")
+
     def test_quote_url_encodes_chinese_output_paths(self):
         self.assertEqual(
             quote_url("https://example.com/output/魔法书生_00001.png?x=1"),
@@ -72,6 +92,29 @@ class ServiceTest(unittest.TestCase):
             self.assertEqual(len(listing["items"]), 20)
             self.assertEqual(listing["next_offset"], 20)
             self.assertTrue(listing["items"][0]["path"].startswith("pose:"))
+
+    def test_service_lists_face_library_directory_lazily(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = root / "data"
+            faces = data / "faces"
+            (faces / "中国女明星" / "刘亦菲").mkdir(parents=True)
+            for index in range(22):
+                (faces / "中国女明星" / "刘亦菲" / f"刘亦菲_{index:02d}.jpg").write_bytes(b"jpg")
+            store = HuashiStore(data / "db.sqlite")
+            store.initialize()
+            service = HuashiService(data, store, FakeRunningHubClient(root / "result.zip"))
+
+            summary = service.face_library_summary()
+            self.assertEqual(summary["name"], "人脸库")
+            self.assertEqual(summary["directory_count"], 1)
+            root_listing = service.list_face_library_directory("")
+            self.assertEqual(root_listing["directories"][0]["name"], "中国女明星")
+            listing = service.list_face_library_directory("中国女明星/刘亦菲", limit=1)
+            self.assertEqual(len(listing["items"]), 20)
+            self.assertEqual(listing["next_offset"], 20)
+            self.assertTrue(listing["items"][0]["path"].startswith("face:"))
+            self.assertEqual(service.resolve_face_library_path("中国女明星/刘亦菲/刘亦菲_00.jpg").name, "刘亦菲_00.jpg")
 
     def test_service_processes_zip_task_into_gallery_and_history(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -101,6 +144,68 @@ class ServiceTest(unittest.TestCase):
             self.assertTrue(all((root / path).exists() for path in extracted))
             self.assertTrue(all("高级换装" in Path(path).name for path in extracted))
 
+    def test_service_adds_thumbnail_urls_without_replacing_original_urls(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            zip_path = root / "fake-result.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                archive.writestr("one.png", b"one")
+
+            store = HuashiStore(root / "db.sqlite")
+            store.initialize()
+            service = HuashiService(root, store, FakeRunningHubClient(zip_path))
+
+            task = service.create_task_from_upload(
+                app_id="private-zip",
+                filename="input.png",
+                content=b"input-image",
+                start_background=False,
+            )
+            service.process_task(task["id"], poll_interval=0, timeout=1)
+
+            listed_task = service.list_tasks()[0]
+            image = next(item for item in listed_task["outputs"] if item["type"] == "image")
+            self.assertEqual(image["url"], f"/files/{image['path']}")
+            self.assertTrue(image["thumb_url"].startswith("/thumbs/480/"))
+            self.assertIn("cache%2F", image["thumb_url"])
+            self.assertTrue(listed_task["input_thumb_url"].startswith("/thumbs/480/"))
+
+            album_item = service.list_album_items("works")[0]
+            self.assertEqual(album_item["url"], f"/files/{album_item['path']}")
+            self.assertTrue(album_item["thumb_url"].startswith("/thumbs/480/"))
+
+    def test_service_task_summaries_keep_preview_without_full_detail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            zip_path = root / "fake-result.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                archive.writestr("one.png", b"one")
+
+            store = HuashiStore(root / "db.sqlite")
+            store.initialize()
+            service = HuashiService(root, store, FakeRunningHubClient(zip_path))
+
+            task = service.create_task_from_upload(
+                app_id="private-zip",
+                filename="input.png",
+                content=b"input-image",
+                prompt="keep full detail out of list",
+                start_background=False,
+            )
+            service.process_task(task["id"], poll_interval=0, timeout=1)
+
+            summary = service.list_task_summaries(limit=10)[0]
+            self.assertEqual(summary["id"], task["id"])
+            self.assertEqual(summary["app_name"], "高级换装")
+            self.assertIn("outputs", summary)
+            self.assertTrue(summary["outputs"][0]["thumb_url"].startswith("/thumbs/480/"))
+            self.assertNotIn("input_payload", summary)
+            self.assertNotIn("prompt", summary)
+
+            detail = service.get_task(task["id"])
+            self.assertIn("input_payload", detail)
+            self.assertIn("prompt", detail)
+
     def test_service_saves_unique_cover_paths_and_album_uploads(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -118,6 +223,24 @@ class ServiceTest(unittest.TestCase):
             item = service.save_album_upload(folder["id"], "ref.jpg", b"jpg")
             self.assertEqual(item["folder_id"], folder["id"])
             self.assertTrue((root / item["path"]).exists())
+
+    def test_service_seeds_flat_icon_library_without_duplicates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store = HuashiStore(root / "db.sqlite")
+            store.initialize()
+            HuashiService(root, store, FakeRunningHubClient(root / "missing.zip"))
+
+            folders = {folder["id"]: folder for folder in store.list_album_folders()}
+            self.assertIn("icons", folders)
+            self.assertEqual(folders["icons"]["name"], "图标库")
+            icons = store.list_album_items("icons")
+            self.assertEqual(len(icons), 32)
+            self.assertTrue(all((root / item["path"]).exists() for item in icons))
+            self.assertTrue(all(item["path"].endswith(".png") for item in icons))
+
+            HuashiService(root, store, FakeRunningHubClient(root / "missing.zip"))
+            self.assertEqual(len(store.list_album_items("icons")), 32)
 
     def test_service_passes_optional_prompt_node_to_runninghub(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -396,6 +519,27 @@ class ServiceTest(unittest.TestCase):
 
             self.assertEqual(failed["status"], "failed")
             self.assertEqual(failed["error"], "RUNNINGHUB_API_KEY is not configured.")
+
+    def test_service_surfaces_runninghub_failed_reason(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store = HuashiStore(root / "db.sqlite")
+            store.initialize()
+            service = HuashiService(root, store, AuditFailureClient(root / "missing.zip"))
+
+            task = service.create_task_from_upload(
+                app_id="private-zip",
+                filename="input.png",
+                content=b"input-image",
+                start_background=False,
+            )
+            failed = service.process_task(task["id"], poll_interval=0, timeout=1)
+
+            self.assertEqual(failed["status"], "failed")
+            self.assertIn("RunningHub 审核失败", failed["error"])
+            self.assertIn("Porn", failed["error"])
+            self.assertIn("色情", failed["error"])
+            self.assertNotIn("secret-key", failed["error"])
 
     def test_service_exports_and_imports_style_backups(self):
         with tempfile.TemporaryDirectory() as source_tmp, tempfile.TemporaryDirectory() as target_tmp:

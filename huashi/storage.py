@@ -3,26 +3,82 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
+from contextlib import closing, contextmanager, nullcontext
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from .app_templates import DEFAULT_APPS
+from .runpod_workflows import RUNPOD_APPS
+from .prompt_folders import PromptFolderStoreMixin
 
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-class HuashiStore:
+class _BorrowedConnection:
+    """Let existing store contexts share an outer import transaction safely."""
+
+    def __init__(self, connection: sqlite3.Connection):
+        self._connection = connection
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def close(self) -> None:
+        pass
+
+    def commit(self) -> None:
+        pass
+
+    def rollback(self) -> None:
+        pass
+
+    def execute(self, sql: str, parameters=()) -> sqlite3.Cursor:
+        if sql.strip().upper().split(maxsplit=1)[:1] == ["BEGIN"] and self._connection.in_transaction:
+            return self._connection.cursor()
+        return self._connection.execute(sql, parameters)
+
+    def __getattr__(self, name):
+        return getattr(self._connection, name)
+
+
+class HuashiStore(PromptFolderStoreMixin):
     def __init__(self, db_path: Path | str):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._import_connection = ContextVar(f"huashi_import_connection_{id(self)}", default=None)
 
-    def connect(self) -> sqlite3.Connection:
+    def connect(self) -> sqlite3.Connection | _BorrowedConnection:
+        shared = self._import_connection.get()
+        if shared is not None:
+            return _BorrowedConnection(shared)
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
+
+    @contextmanager
+    def atomic_import(self):
+        """Commit a whole import once, or roll it back on any later failure.
+
+        ContextVar isolates request threads and store instances. Nested store
+        helpers borrow this connection without committing or closing it.
+        """
+        if self._import_connection.get() is not None:
+            yield
+            return
+        with closing(self.connect()) as conn, conn:
+            conn.execute("BEGIN IMMEDIATE")
+            token = self._import_connection.set(conn)
+            try:
+                yield
+            finally:
+                self._import_connection.reset(token)
 
     def initialize(self) -> None:
         with self.connect() as conn:
@@ -47,6 +103,7 @@ class HuashiStore:
                   favorite INTEGER NOT NULL,
                   accent TEXT NOT NULL,
                   cover_path TEXT NOT NULL DEFAULT '',
+                  icon_path TEXT NOT NULL DEFAULT '',
                   source_url TEXT NOT NULL DEFAULT '',
                   prompt_node_id TEXT NOT NULL DEFAULT '',
                   prompt_field_name TEXT NOT NULL DEFAULT '',
@@ -149,8 +206,13 @@ class HuashiStore:
                 );
                 """
             )
+            from .task_queue import initialize_queue
+            initialize_queue(conn)
             self._ensure_columns(conn, "apps", {
+                "provider": "TEXT NOT NULL DEFAULT 'runninghub'",
+                "workflow_key": "TEXT NOT NULL DEFAULT ''",
                 "cover_path": "TEXT NOT NULL DEFAULT ''",
+                "icon_path": "TEXT NOT NULL DEFAULT ''",
                 "source_url": "TEXT NOT NULL DEFAULT ''",
                 "prompt_node_id": "TEXT NOT NULL DEFAULT ''",
                 "prompt_field_name": "TEXT NOT NULL DEFAULT ''",
@@ -159,6 +221,11 @@ class HuashiStore:
                 "sort_order": "INTEGER NOT NULL DEFAULT 100",
             })
             self._ensure_columns(conn, "tasks", {
+                "provider": "TEXT NOT NULL DEFAULT 'runninghub'",
+                "runpod_job_id": "TEXT",
+                "remote_status": "TEXT NOT NULL DEFAULT ''",
+                "stage": "TEXT NOT NULL DEFAULT ''",
+                "remote_submission_state": "TEXT NOT NULL DEFAULT 'not_submitted'",
                 "prompt": "TEXT NOT NULL DEFAULT ''",
                 "input_payload": "TEXT NOT NULL DEFAULT '{}'",
             })
@@ -184,13 +251,13 @@ class HuashiStore:
                     INSERT INTO apps (
                       id, name, description, webapp_id, node_id, field_name,
                       input_type, output_type, auto_unzip, category, favorite,
-                      accent, cover_path, source_url, prompt_node_id,
+                      accent, cover_path, icon_path, source_url, prompt_node_id,
                       prompt_field_name, default_prompt, inputs, sort_order, enabled
                     )
                     VALUES (
                       :id, :name, :description, :webapp_id, :node_id, :field_name,
                       :input_type, :output_type, :auto_unzip, :category, :favorite,
-                      :accent, :cover_path, :source_url, :prompt_node_id,
+                      :accent, :cover_path, :icon_path, :source_url, :prompt_node_id,
                       :prompt_field_name, :default_prompt, :inputs, :sort_order, :enabled
                     )
                     ON CONFLICT(id) DO UPDATE SET
@@ -206,6 +273,7 @@ class HuashiStore:
                       favorite = excluded.favorite,
                       accent = excluded.accent,
                       cover_path = excluded.cover_path,
+                      icon_path = excluded.icon_path,
                       source_url = excluded.source_url,
                       prompt_node_id = excluded.prompt_node_id,
                       prompt_field_name = excluded.prompt_field_name,
@@ -219,6 +287,36 @@ class HuashiStore:
                 conn.execute(
                     "INSERT INTO schema_meta (key, value) VALUES ('default_apps_v2', ?)",
                     (utc_now(),),
+                )
+            # Only RunPod's code-maintained app IDs are refreshed on startup.
+            for app in RUNPOD_APPS:
+                clean = self._serialize_app(self._normalize_app(app))
+                conn.execute(
+                    """INSERT INTO apps (
+                      id, name, description, webapp_id, node_id, field_name,
+                      input_type, output_type, auto_unzip, category, favorite,
+                      accent, cover_path, icon_path, source_url, prompt_node_id,
+                      prompt_field_name, default_prompt, inputs, sort_order, enabled,
+                      provider, workflow_key
+                    ) VALUES (
+                      :id, :name, :description, :webapp_id, :node_id, :field_name,
+                      :input_type, :output_type, :auto_unzip, :category, :favorite,
+                      :accent, :cover_path, :icon_path, :source_url, :prompt_node_id,
+                      :prompt_field_name, :default_prompt, :inputs, :sort_order, :enabled,
+                      :provider, :workflow_key
+                    ) ON CONFLICT(id) DO UPDATE SET
+                      name = excluded.name,
+                      description = excluded.description,
+                      input_type = excluded.input_type,
+                      output_type = excluded.output_type,
+                      category = excluded.category,
+                      accent = excluded.accent,
+                      inputs = excluded.inputs,
+                      sort_order = excluded.sort_order,
+                      enabled = excluded.enabled,
+                      provider = excluded.provider,
+                      workflow_key = excluded.workflow_key""",
+                    clean,
                 )
             migrated_variants = conn.execute("SELECT value FROM schema_meta WHERE key = 'embedded_prompt_variants_v1'").fetchone()
             if migrated_variants is None:
@@ -235,6 +333,8 @@ class HuashiStore:
                 (utc_now(), utc_now()),
             )
 
+        self.initialize_prompt_folders()
+
     def list_apps(self) -> list[dict[str, Any]]:
         with self.connect() as conn:
             rows = conn.execute(
@@ -242,9 +342,12 @@ class HuashiStore:
             ).fetchall()
         return [self._app_from_row(row) for row in rows]
 
-    def list_all_apps(self) -> list[dict[str, Any]]:
+    def list_all_apps(self, provider: str | None = None) -> list[dict[str, Any]]:
         with self.connect() as conn:
-            rows = conn.execute("SELECT * FROM apps ORDER BY enabled DESC, sort_order ASC, rowid ASC").fetchall()
+            if provider:
+                rows = conn.execute("SELECT * FROM apps WHERE provider = ? ORDER BY enabled DESC, sort_order ASC, rowid ASC", (provider,)).fetchall()
+            else:
+                rows = conn.execute("SELECT * FROM apps ORDER BY enabled DESC, sort_order ASC, rowid ASC").fetchall()
         return [self._app_from_row(row) for row in rows]
 
     def get_app(self, app_id: str) -> dict[str, Any]:
@@ -261,6 +364,7 @@ class HuashiStore:
         input_name: str,
         prompt: str = "",
         input_payload: dict[str, Any] | None = None,
+        stage: str = "",
     ) -> dict[str, Any]:
         task_id = uuid.uuid4().hex
         now = utc_now()
@@ -268,17 +372,19 @@ class HuashiStore:
             conn.execute(
                 """
                 INSERT INTO tasks (
-                  id, app_id, status, input_path, input_name, outputs, prompt, input_payload, created_at, updated_at
+                  id, app_id, provider, status, input_path, input_name, outputs, prompt, input_payload, stage, created_at, updated_at
                 )
-                VALUES (?, ?, 'queued', ?, ?, '[]', ?, ?, ?, ?)
+                VALUES (?, ?, ?, 'queued', ?, ?, '[]', ?, ?, ?, ?, ?)
                 """,
                 (
                     task_id,
                     app_id,
+                    self.get_app(app_id)["provider"],
                     input_path,
                     input_name,
                     prompt,
                     json.dumps(input_payload or {}, ensure_ascii=False),
+                    stage,
                     now,
                     now,
                 ),
@@ -286,6 +392,13 @@ class HuashiStore:
         return self.get_task(task_id)
 
     def save_app(self, data: dict[str, Any], app_id: str | None = None) -> dict[str, Any]:
+        if app_id:
+            with self.connect() as conn:
+                existing = conn.execute("SELECT provider FROM apps WHERE id = ?", (app_id,)).fetchone()
+            if existing and existing["provider"] == "runpod":
+                raise ValueError("RunPod 应用由代码配置维护")
+        if str(data.get("provider") or "runninghub") != "runninghub":
+            raise ValueError("RunPod 应用由代码配置维护")
         clean = self._serialize_app(self._normalize_app(data, app_id))
         with self.connect() as conn:
             conn.execute(
@@ -294,12 +407,13 @@ class HuashiStore:
                   id, name, description, webapp_id, node_id, field_name,
                   input_type, output_type, auto_unzip, category, favorite,
                   accent, cover_path, source_url, prompt_node_id,
-                  prompt_field_name, default_prompt, inputs, sort_order, enabled
+                  icon_path, prompt_field_name, default_prompt, inputs, sort_order, enabled
                 )
                 VALUES (
                   :id, :name, :description, :webapp_id, :node_id, :field_name,
                   :input_type, :output_type, :auto_unzip, :category, :favorite,
                   :accent, :cover_path, :source_url, :prompt_node_id,
+                  :icon_path,
                   :prompt_field_name, :default_prompt, :inputs, :sort_order, :enabled
                 )
                 ON CONFLICT(id) DO UPDATE SET
@@ -315,6 +429,7 @@ class HuashiStore:
                   favorite = excluded.favorite,
                   accent = excluded.accent,
                   cover_path = excluded.cover_path,
+                  icon_path = excluded.icon_path,
                   source_url = excluded.source_url,
                   prompt_node_id = excluded.prompt_node_id,
                   prompt_field_name = excluded.prompt_field_name,
@@ -328,12 +443,16 @@ class HuashiStore:
         return self.get_app(clean["id"])
 
     def disable_app(self, app_id: str) -> dict[str, Any]:
+        if self.get_app(app_id)["provider"] == "runpod":
+            raise ValueError("RunPod 应用由代码配置维护")
         with self.connect() as conn:
             conn.execute("UPDATE apps SET enabled = 0 WHERE id = ?", (app_id,))
         return self.get_app(app_id)
 
     def delete_app(self, app_id: str) -> dict[str, Any]:
         app = self.get_app(app_id)
+        if app["provider"] == "runpod":
+            raise ValueError("RunPod 应用由代码配置维护")
         with self.connect() as conn:
             conn.execute("DELETE FROM prompt_app_links WHERE app_id = ?", (app_id,))
             conn.execute("DELETE FROM apps WHERE id = ?", (app_id,))
@@ -341,6 +460,10 @@ class HuashiStore:
 
     def update_task(self, task_id: str, **changes: Any) -> dict[str, Any]:
         allowed = {
+            "runpod_job_id",
+            "remote_status",
+            "stage",
+            "remote_submission_state",
             "runninghub_task_id",
             "status",
             "output_type",
@@ -466,6 +589,41 @@ class HuashiStore:
             )
         return self.get_album_folder(folder_id)
 
+    def default_upload_folder(self) -> dict[str, Any]:
+        """Reuse the inbox atomically without renaming a user's existing folder."""
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT * FROM album_folders WHERE name = ? ORDER BY sort_order, created_at LIMIT 1", ("待整理",)).fetchone()
+            if row is not None:
+                return dict(row)
+            folder_id = "__inbox__"
+            if conn.execute("SELECT 1 FROM album_folders WHERE id = ?", (folder_id,)).fetchone():
+                folder_id = uuid.uuid4().hex
+            now = utc_now()
+            conn.execute("INSERT INTO album_folders (id, name, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", (folder_id, "待整理", 120, now, now))
+            row = conn.execute("SELECT * FROM album_folders WHERE id = ?", (folder_id,)).fetchone()
+        return dict(row)
+
+    def ensure_album_folder(self, folder_id: str, name: str, sort_order: int = 100) -> dict[str, Any]:
+        clean_id = str(folder_id or "").strip()
+        clean_name = str(name or "").strip()
+        if not clean_id or not clean_name:
+            raise ValueError("文件夹名称不能为空")
+        now = utc_now()
+        with self.connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO album_folders (id, name, sort_order, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                  name = excluded.name,
+                  sort_order = excluded.sort_order,
+                  updated_at = excluded.updated_at
+                """,
+                (clean_id, clean_name, int(sort_order), now, now),
+            )
+        return self.get_album_folder(clean_id)
+
     def get_album_folder(self, folder_id: str) -> dict[str, Any]:
         with self.connect() as conn:
             row = conn.execute("SELECT * FROM album_folders WHERE id = ?", (folder_id,)).fetchone()
@@ -572,6 +730,63 @@ class HuashiStore:
             )
         return self.get_album_item(item_id)
 
+    def save_album_asset(
+        self,
+        folder_id: str,
+        file_path: str,
+        title: str = "",
+        source_type: str = "upload",
+    ) -> dict[str, Any]:
+        self.get_album_folder(folder_id)
+        clean_path = str(file_path or "").strip()
+        if not clean_path:
+            raise ValueError("图片路径不能为空")
+        clean_title = str(title or "").strip()
+        clean_source = str(source_type or "upload").strip() or "upload"
+        now = utc_now()
+        with self.connect() as conn:
+            existing = conn.execute(
+                """
+                SELECT id
+                FROM album_items
+                WHERE folder_id = ? AND file_path = ? AND deleted_at IS NULL
+                LIMIT 1
+                """,
+                (folder_id, clean_path),
+            ).fetchone()
+            if existing is None and clean_source == "icon_library" and clean_title:
+                existing = conn.execute(
+                    """
+                    SELECT id
+                    FROM album_items
+                    WHERE folder_id = ? AND source_type = ? AND title = ? AND deleted_at IS NULL
+                    LIMIT 1
+                    """,
+                    (folder_id, clean_source, clean_title),
+                ).fetchone()
+            if existing:
+                conn.execute(
+                    "UPDATE album_items SET file_path = ?, title = ?, source_type = ?, updated_at = ? WHERE id = ?",
+                    (clean_path, clean_title, clean_source, now, existing["id"]),
+                )
+                item_id = existing["id"]
+            else:
+                min_pos = conn.execute(
+                    "SELECT COALESCE(MIN(position), 0) AS value FROM album_items WHERE folder_id = ?",
+                    (folder_id,),
+                ).fetchone()["value"] or 0
+                item_id = uuid.uuid4().hex
+                conn.execute(
+                    """
+                    INSERT INTO album_items (
+                      id, folder_id, source_type, file_path, title, position, blurred, created_at, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+                    """,
+                    (item_id, folder_id, clean_source, clean_path, clean_title, int(min_pos) - 10, now, now),
+                )
+        return self.get_album_item(item_id)
+
     def get_album_item(self, item_id: str) -> dict[str, Any]:
         with self.connect() as conn:
             row = conn.execute(
@@ -661,8 +876,10 @@ class HuashiStore:
             conn.execute("UPDATE album_items SET deleted_at = ?, updated_at = ? WHERE id = ?", (utc_now(), utc_now(), item_id))
         return self.get_album_item(item_id)
 
-    def list_prompts(self, app_id: str | None = None, include_deleted: bool = False) -> list[dict[str, Any]]:
+    def list_prompts(self, app_id: str | None = None, include_deleted: bool = False, folder_id: str | None = None) -> list[dict[str, Any]]:
         with self.connect() as conn:
+            if folder_id is not None:
+                self._folder_leaf(conn, folder_id)
             if app_id:
                 rows = conn.execute(
                     """
@@ -671,38 +888,42 @@ class HuashiStore:
                     LEFT JOIN prompt_app_links ON prompt_app_links.prompt_id = prompts.id
                     WHERE (? = 1 OR prompts.deleted_at IS NULL)
                       AND (prompt_app_links.app_id = ? OR prompt_app_links.app_id IS NULL)
+                      AND (? IS NULL OR prompts.id IN (SELECT prompt_id FROM prompt_folder_links WHERE folder_id = ?))
                     ORDER BY
                       CASE WHEN prompt_app_links.app_id = ? THEN 0 ELSE 1 END,
                       prompts.favorite DESC,
                       prompts.last_used_at DESC,
                       prompts.updated_at DESC
                     """,
-                    (1 if include_deleted else 0, app_id, app_id),
+                    (1 if include_deleted else 0, app_id, folder_id, folder_id, app_id),
                 ).fetchall()
             else:
                 rows = conn.execute(
                     """
                     SELECT * FROM prompts
                     WHERE (? = 1 OR deleted_at IS NULL)
+                      AND (? IS NULL OR id IN (SELECT prompt_id FROM prompt_folder_links WHERE folder_id = ?))
                     ORDER BY favorite DESC, last_used_at DESC, updated_at DESC
                     """,
-                    (1 if include_deleted else 0,),
+                    (1 if include_deleted else 0, folder_id, folder_id),
                 ).fetchall()
         prompts = [self._prompt_from_row(row) for row in rows]
-        return self._attach_prompt_variants(prompts, include_deleted=include_deleted)
+        return self._attach_prompt_folders(self._attach_prompt_variants(prompts, include_deleted=include_deleted))
 
     def get_prompt(self, prompt_id: str) -> dict[str, Any]:
         with self.connect() as conn:
             row = conn.execute("SELECT * FROM prompts WHERE id = ?", (prompt_id,)).fetchone()
         if row is None:
             raise KeyError(f"Unknown prompt: {prompt_id}")
-        return self._attach_prompt_variants([self._prompt_from_row(row)], include_deleted=True)[0]
+        return self._attach_prompt_folders(self._attach_prompt_variants([self._prompt_from_row(row)], include_deleted=True))[0]
 
     def save_prompt(self, data: dict[str, Any], prompt_id: str | None = None) -> dict[str, Any]:
         clean = self._normalize_prompt(data, prompt_id)
         app_ids = clean.pop("app_ids")
         now = utc_now()
         with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            folder_id = self._prompt_folder_for_save(conn, data, clean["id"])
             existing = conn.execute("SELECT created_at FROM prompts WHERE id = ?", (clean["id"],)).fetchone()
             clean["created_at"] = existing["created_at"] if existing else now
             clean["updated_at"] = now
@@ -733,6 +954,7 @@ class HuashiStore:
                 "INSERT OR IGNORE INTO prompt_app_links (prompt_id, app_id, created_at) VALUES (?, ?, ?)",
                 [(clean["id"], app_id, now) for app_id in app_ids],
             )
+            self._set_prompt_folder(conn, clean["id"], folder_id, now)
         return self.get_prompt(clean["id"])
 
     def save_prompt_variant(self, prompt_id: str, data: dict[str, Any], variant_id: str | None = None) -> dict[str, Any]:
@@ -841,6 +1063,7 @@ class HuashiStore:
         for key in ("auto_unzip", "favorite", "enabled"):
             data[key] = bool(data[key])
         data["inputs"] = self._deserialize_inputs(data.get("inputs"), data)
+        data["icon_url"] = f"/files/{data['icon_path']}" if data.get("icon_path") else ""
         data["cover_url"] = f"/files/{data['cover_path']}" if data.get("cover_path") else "/default-app-icon.png"
         return data
 
@@ -864,14 +1087,14 @@ class HuashiStore:
             data["title"] = data.get("app_name") or "作品"
         return data
 
-    def _prompt_from_row(self, row: sqlite3.Row) -> dict[str, Any]:
+    def _prompt_from_row(self, row: sqlite3.Row, conn: sqlite3.Connection | None = None) -> dict[str, Any]:
         data = dict(row)
         data["favorite"] = bool(data["favorite"])
         data["tags"] = self._loads_list(data.get("tags"))
         data["deleted"] = bool(data.get("deleted_at"))
         sample_path = data.get("sample_path") or ""
         data["sample_url"] = f"/pose-files/{sample_path.removeprefix('pose:')}" if sample_path.startswith("pose:") else f"/files/{sample_path}" if sample_path else ""
-        with self.connect() as conn:
+        with nullcontext(conn) if conn is not None else self.connect() as conn:
             links = conn.execute(
                 """
                 SELECT apps.id, apps.name, apps.webapp_id
@@ -887,12 +1110,12 @@ class HuashiStore:
         data["variants"] = []
         return data
 
-    def _attach_prompt_variants(self, prompts: list[dict[str, Any]], include_deleted: bool = False) -> list[dict[str, Any]]:
+    def _attach_prompt_variants(self, prompts: list[dict[str, Any]], include_deleted: bool = False, conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
         if not prompts:
             return prompts
         prompt_ids = [prompt["id"] for prompt in prompts]
         placeholders = ",".join("?" for _ in prompt_ids)
-        with self.connect() as conn:
+        with nullcontext(conn) if conn is not None else self.connect() as conn:
             rows = conn.execute(
                 f"""
                 SELECT * FROM prompt_variants
@@ -919,10 +1142,10 @@ class HuashiStore:
 
     def _is_image_output(self, output: dict[str, Any]) -> bool:
         output_type = str(output.get("type") or "").lower()
-        if output_type in {"image", "png", "jpg", "jpeg", "webp"}:
+        if output_type in {"image", "png", "jpg", "jpeg", "webp", "svg"}:
             return True
         path = str(output.get("path") or "")
-        return Path(path).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
+        return Path(path).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp", ".svg"}
 
     def _migrate_embedded_prompt_variants(self, conn: sqlite3.Connection) -> None:
         marker = "---- AI 衍生提示词"
@@ -966,6 +1189,8 @@ class HuashiStore:
     def _normalize_app(self, data: dict[str, Any], app_id: str | None = None) -> dict[str, Any]:
         normalized = {
             "id": app_id or data.get("id") or uuid.uuid4().hex,
+            "provider": str(data.get("provider") or "runninghub").strip().lower(),
+            "workflow_key": str(data.get("workflow_key") or "").strip(),
             "name": str(data.get("name") or "").strip(),
             "description": str(data.get("description") or "").strip(),
             "webapp_id": str(data.get("webapp_id") or "").strip(),
@@ -978,6 +1203,7 @@ class HuashiStore:
             "favorite": self._truthy(data.get("favorite")),
             "accent": str(data.get("accent") or "#6d5dfc").strip(),
             "cover_path": str(data.get("cover_path") or "").strip(),
+            "icon_path": str(data.get("icon_path") or "").strip(),
             "source_url": str(data.get("source_url") or "").strip(),
             "prompt_node_id": str(data.get("prompt_node_id") or "").strip(),
             "prompt_field_name": str(data.get("prompt_field_name") or "").strip(),
@@ -988,8 +1214,12 @@ class HuashiStore:
         }
         if not normalized["name"]:
             raise ValueError("样式名称不能为空")
-        if not normalized["webapp_id"]:
+        if normalized["provider"] not in {"runninghub", "runpod"}:
+            raise ValueError("不支持的任务来源")
+        if normalized["provider"] == "runninghub" and not normalized["webapp_id"]:
             raise ValueError("RunningHub 应用 ID 不能为空")
+        if normalized["provider"] == "runpod" and not normalized["workflow_key"]:
+            raise ValueError("RunPod workflow_key 不能为空")
         if not normalized["inputs"] and normalized["node_id"] and normalized["field_name"]:
             normalized["inputs"] = self._legacy_inputs(normalized)
         else:
@@ -1009,6 +1239,7 @@ class HuashiStore:
             "enabled": int(self._truthy(app.get("enabled", True))),
             "sort_order": int(app.get("sort_order") or 100),
             "cover_path": app.get("cover_path") or "",
+            "icon_path": app.get("icon_path") or "",
             "source_url": app.get("source_url") or "",
             "prompt_node_id": app.get("prompt_node_id") or "",
             "prompt_field_name": app.get("prompt_field_name") or "",
@@ -1061,6 +1292,7 @@ class HuashiStore:
                 "options": [str(option) for option in options],
                 "role": "prompt" if self._is_prompt_input(item, input_type, field_name) else "",
                 "outputTypeMap": self._normalize_output_type_map(item.get("outputTypeMap") or item.get("output_type_map")),
+                "valueMap": item.get("valueMap") if isinstance(item.get("valueMap"), dict) else {},
             })
         return normalized
 
