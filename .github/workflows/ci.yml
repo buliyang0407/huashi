@@ -25,9 +25,16 @@ jobs:
       - name: Verify clean container HTTP startup
         run: |
           docker run -d --name huashi-verify -p 127.0.0.1:18787:8787 huashi:verify
-          curl --retry 15 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:18787/api/apps > /dev/null
           python - <<'PY'
-          import gzip,json,urllib.request
+          import gzip,json,urllib.request,time
+          for attempt in range(30):
+              try:
+                  with urllib.request.urlopen('http://127.0.0.1:18787/api/apps',timeout=2) as response:
+                      assert response.status==200
+                  break
+              except OSError:
+                  if attempt==29:raise
+                  time.sleep(1)
           for name in ['portrait-materials.json','portrait-materials.json.gz']:
               with urllib.request.urlopen('http://127.0.0.1:18787/'+name) as r:
                   data=r.read()
