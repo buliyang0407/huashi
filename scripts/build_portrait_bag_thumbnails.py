@@ -31,7 +31,7 @@ def write_bundle(app_root,output):
      add('portrait-materials.json',json.dumps(out,ensure_ascii=False).encode())
      report={'count':len(out),'unique_thumbnails':len(seen),'original_bytes':original_bytes,'thumbnail_bytes':thumb_bytes,'seconds':round(time.monotonic()-start,2)}
      add('thumbnail-report.json',json.dumps(report).encode())
-    
+
     return report
 
 if __name__=="__main__":
