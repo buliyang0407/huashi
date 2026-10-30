@@ -1,0 +1,24 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+const file = path.join(__dirname, '../web/inspiration-nav.js');
+assert.ok(fs.existsSync(file), 'Stage A navigation module must exist');
+const context = {window:{}, URL, URLSearchParams};
+vm.runInNewContext(fs.readFileSync(file,'utf8'), context);
+const nav = context.window.HuashiInspirationNav;
+let checks=0;
+function check(name, fn){fn(); checks++; console.log('PASS',name);}
+check('three second-level entries',()=>{for(const domain of ['prompts','animation','image'])assert.equal(nav.parse('#inspiration/'+domain).domain,domain==='prompts'?'prompt':domain)});
+check('code is third level',()=>assert.equal(nav.parse('#inspiration/animation/code').collection,'code'));
+check('image style detail',()=>{const r=nav.parse('#inspiration/image/styles?entry=style%3A1');assert.equal(r.kind,'style');assert.equal(r.entryId,'style:1')});
+check('Chinese search round trip',()=>{const r=nav.parse('#inspiration/image/cases?q='+encodeURIComponent('礼服 海报')+'&page=2&size=50&entry=case%3A9');const b=nav.parse(nav.format(r));for(const k of ['domain','kind','query','page','pageSize','entryId'])assert.equal(b[k],r[k])});
+check('old prompt links',()=>{assert.equal(nav.legacy('/#portrait'),'#inspiration/prompts/portrait');assert.equal(nav.legacy('/#prompts'),'#inspiration/prompts');assert.equal(nav.legacy('/#rewrite'),'#inspiration/prompts')});
+check('old image route',()=>assert.equal(nav.legacy('/#inspiration-layout'),'#inspiration/image/layouts'));
+check('standalone old detail preserves filters',()=>{const r=nav.parse(nav.legacy('/inspiration/#/styles?q=水墨&category=东方&entry=style%3A5'));assert.equal(r.kind,'style');assert.equal(r.query,'水墨');assert.equal(r.category,'东方');assert.equal(r.entryId,'style:5')});
+check('unknown route recovers with notice',()=>{const r=nav.parse('#inspiration/not-a-room');assert.equal(r.view,'home');assert.ok(r.notice)});
+check('malformed pagination is bounded',()=>{const r=nav.parse('#inspiration/image/cases?page=-8&size=999');assert.equal(r.page,0);assert.equal(r.pageSize,50)});
+check('unknown future animation collection is not activated',()=>assert.ok(nav.parse('#inspiration/animation/film').notice));
+check('animation source and technology round trip',()=>{const r=nav.parse('#inspiration/animation/code?kind=template&source=lemomo-ai%2Flemo-opuscar&tech=Canvas');const back=nav.parse(nav.format(r));assert.equal(back.sourceId,'lemomo-ai/lemo-opuscar');assert.equal(back.tech,'Canvas');assert.equal(back.kind,'template')});
+check('default fifty and explicit page sizes round trip',()=>{for(const view of ['image/cases','animation/code','search','favorites','prompts']){assert.equal(nav.parse('#inspiration/'+view).pageSize,50);for(const size of [20,50,100]){const r=nav.parse('#inspiration/'+view+'?size='+size);assert.equal(nav.parse(nav.format(r)).pageSize,size);assert.equal(nav.format(r).includes('size='),size!==50);}}});
+console.log(JSON.stringify({checks,passed:checks}));

@@ -1,0 +1,131 @@
+{
+  "1": {
+    "inputs": {
+      "unet_name": "noctQUncensoredRealismBuiltOn_v40Base_3260131.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器"
+    }
+  },
+  "2": {
+    "inputs": {
+      "clip_name": "qwen3vl_8b_int8_convrot.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "加载CLIP"
+    }
+  },
+  "3": {
+    "inputs": {
+      "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "4": {
+    "inputs": {
+      "prompt": "一位32岁的欧洲女性，浅金色微卷长发，灰绿色眼睛，面部轮廓自然立体，鼻梁挺直，嘴唇自然饱满。\n\n她坐在一间复古咖啡馆的深棕色皮质沙发上，穿着白色真丝衬衫和黑色高腰长裤，领口自然敞开，佩戴简洁的金色耳环。\n\n她微微倾斜头部，直视镜头，神情自信而放松，一只手自然放在沙发扶手上。\n\n摄影机距离人物约两米，采用85mm镜头拍摄半身肖像。\n\n下午的自然光从左侧窗户进入，照亮她的脸颊、眼睛和发丝，右侧形成柔和阴影。\n\n专业时尚肖像摄影，真实皮肤毛孔、轻微雀斑、自然唇纹和细小面部纹理，真实眼球反射，细腻的头发层次，真丝衬衫具有自然褶皱与柔和光泽。\n\n照片色彩克制，暖棕色背景，浅景深，真实单反相机拍摄质感，不过度锐化，不过度美颜。",
+      "negative_prompt": "artifacts, gpt-image, washed-out colors, low quality, low resolution, AI slop, deviantart, sloppy lines, rough sketch, blurry, indistinct, missing fingers, badly drawn hands, wrong number of fingers",
+      "resolution": 1024,
+      "clip": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImage21",
+    "_meta": {
+      "title": "Text Encode Qwen Image 2.1"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 1024,
+      "height": 1536,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "空Latent图像"
+    }
+  },
+  "6": {
+    "inputs": {
+      "seed": 125072102211169,
+      "steps": 25,
+      "cfg": 3,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "11",
+        0
+      ],
+      "positive": [
+        "4",
+        0
+      ],
+      "negative": [
+        "4",
+        1
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "K采样器"
+    }
+  },
+  "7": {
+    "inputs": {
+      "samples": [
+        "6",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "8": {
+    "inputs": {
+      "filename_prefix": "NoctQ_V4",
+      "images": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  },
+  "11": {
+    "inputs": {
+      "lora_name": "NSFW Qwen by TheseAlpacas V2.safetensors",
+      "strength_model": 1,
+      "model": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoRA加载器（仅模型）"
+    }
+  }
+}

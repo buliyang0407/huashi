@@ -1,13 +1,38 @@
+const PORTRAIT_CATALOG_CACHE_KEY = "huashiPortraitCatalog:v5";
+const PORTRAIT_CATALOG_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+const PORTRAIT_STEP_PAGE_SIZE = 50;
+const HISTORY_PAGE_SIZE = 20;
+const INITIAL_HASH = window.location.hash.replace("#", "");
+const initialRoute = HuashiRooms.parseRoute(INITIAL_HASH);
+if(initialRoute.canonicalHash && INITIAL_HASH !== initialRoute.canonicalHash) history.replaceState(null,"", "#"+initialRoute.canonicalHash);
+
 const state = {
+  inspirationRoute: initialRoute.inspirationRoute || null,
   apps: [],
   tasks: [],
+  queue: null,
+  queueLoadError: "",
+  queueConfirming: null,
+  queueBusy: false,
+  taskSubmitting: false,
   prompts: [],
   albums: [],
   albumItems: [],
   selectedAlbumId: "works",
-  galleryFolderOpen: false,
+  galleryFolderOpen: true,
+  gallerySelected: new Set(),
+  albumRequest: 0,
+  albumLoading: false,
+  galleryPage: 0,
+  galleryPageSize: 20,
+  galleryQuiet: false,
+  promptSampleRequest: 0,
+  galleryColumns: 4,
+  galleryZoom: 1,
   posePath: "",
   poseData: null,
+  facePath: "",
+  faceData: null,
   promptModels: [],
   selectedAppId: null,
   selectedTaskId: null,
@@ -17,25 +42,68 @@ const state = {
   artworkPickerAlbumOpen: false,
   artworkPickerAlbumId: "",
   artworkPickerPosePath: "",
+  artworkPickerFacePath: "",
   artworkPickerItems: [],
+  artworkPickerPage: 0,
+  artworkPickerPageSize: 20,
+  artworkPickerRequest: 0,
   artworkPickerPoseData: null,
+  artworkPickerFaceData: null,
   rewritingPromptId: "",
   galleryIndex: 0,
   galleryViewerOpen: false,
   homeSort: "new",
+  homeProvider: "runpod",
   category: "全部",
   historyFilter: "all",
+  historyPage: 0,
+  historyPageSize: HISTORY_PAGE_SIZE,
   search: "",
   promptSearch: "",
+  promptPage: 0,
+  promptPageSize: 50,
+  promptFolderId: "",
+  promptFolderError: "",
+  promptAllDirectories: false,
+  promptSelected: new Set(),
+  promptSelecting: false,
+  promptFormFolderControl: null,
   pickerSearch: "",
+  pendingComposePrompt: "",
+  promptSection: initialRoute.promptSection || "",
+  promptTool: initialRoute.promptTool || "",
   rewriteCandidates: [],
   rewriteTranslations: {},
   agentPromptId: "",
   agentAnalysis: null,
+  agentEdits: [],
   agentResult: null,
   agentParentVariantId: "",
   agentRoundIndex: 0,
   agentSessionId: "",
+  portraitSlots: [],
+  portraitMaterials: [],
+  portraitCatalogItems: [],
+  portraitCategories: [],
+  portraitSelected: {},
+  portraitManual: {},
+  portraitBasePrompt: "",
+  portraitImportOpen: false,
+  portraitImportPrompt: "",
+  portraitImportAnalysis: null,
+  portraitImportMappedItems: [],
+  portraitQuery: "",
+  portraitActiveGroups: {},
+  portraitStepIndex: 0,
+  portraitPage: 0,
+  portraitPageSize: PORTRAIT_STEP_PAGE_SIZE,
+  portraitNextOffset: null,
+  portraitPreviewId: "",
+  portraitLoading: false,
+  portraitResult: null,
+  portraitDrawerOpen: false,
+  loadingTaskDetails: {},
+  copyToastTimer: null,
   view: initialView(),
   polling: null,
 };
@@ -49,106 +117,348 @@ async function api(path, options = {}) {
   return payload;
 }
 
+async function copyText(text, button = null, message = "已复制到剪贴板") {
+  const value = String(text || "");
+  if (!value.trim()) {
+    showToast("没有可复制的内容", "error");
+    return false;
+  }
+  try {
+    await copyToClipboard(value);
+    markCopied(button);
+    showToast(message, "info");
+    return true;
+  } catch (_error) {
+    showToast("复制失败，请手动选中复制", "error");
+    return false;
+  }
+}
+
+async function copyToClipboard(text) {
+  if (navigator.clipboard?.writeText && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(text); return; } catch (_error) { /* HTTP/modal fallback below. */ }
+  }
+  const focused = document.activeElement;
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.cssText = "position:fixed;left:0;top:0;opacity:0;pointer-events:none";
+  const host = [...document.querySelectorAll('dialog[open]')].at(-1) || document.body;
+  host.appendChild(textarea);
+  textarea.focus({preventScroll:true});textarea.select();
+  try { if (!document.execCommand("copy")) throw new Error("copy failed"); }
+  finally {textarea.remove();focused?.focus({preventScroll:true});}
+}
+
+function markCopied(button) {
+  flashButtonLabel(button, "已复制");
+}
+
+function flashButtonLabel(button, label) {
+  if (!button) return;
+  if (!button.dataset.originalLabel) button.dataset.originalLabel = button.textContent;
+  button.textContent = label;
+  button.classList.add("is-copied");
+  window.setTimeout(() => {
+    button.textContent = button.dataset.originalLabel || "复制";
+    button.classList.remove("is-copied");
+  }, 1600);
+}
+
+function showToast(message, kind = "info") {
+  const toast = $("copyToast");
+  if (!toast) return;
+  toast.textContent = message;
+  toast.dataset.kind = kind;
+  toast.classList.remove("hidden");
+  window.clearTimeout(state.copyToastTimer);
+  state.copyToastTimer = window.setTimeout(() => toast.classList.add("hidden"), 1800);
+}
+
 function initialView() {
-  const view = window.location.hash.replace("#", "");
-  return ["home", "compose", "result", "history", "gallery", "prompts"].includes(view) ? view : "home";
+  return HuashiRooms.parseRoute(window.location.hash).view;
 }
 
 async function loadData() {
-  const [{ apps }, { tasks }, { prompts }, { models }, { folders }] = await Promise.all([
+  const [{ apps }, { tasks }, { prompts }, { models }, { folders }, queueData] = await Promise.all([
     api("/api/apps"),
-    api("/api/tasks"),
+    api(state.view === "history" ? "/api/tasks?summary=1" : "/api/tasks?summary=1&limit=120"),
     api("/api/prompts"),
     api("/api/prompt-models"),
     api("/api/albums"),
+    api("/api/runpod/queue").catch(error => ({loadError:error.message})),
   ]);
+  try {
+    const directoryData = await HuashiPromptFolders.refresh(api);
+    const nextFolderId = HuashiPromptFolders.resolveLeaf(directoryData, state.promptFolderId || HuashiPromptFolders.remembered());
+    if (nextFolderId !== state.promptFolderId) state.promptSelected.clear();
+    state.promptFolderId = nextFolderId;
+    state.promptFolderError = nextFolderId ? "" : "没有可用的默认二级目录，请先管理目录。";
+  } catch (error) {state.promptFolderId = ""; state.promptFolderError = error.message; state.promptSelected.clear();}
+  if (queueData.loadError) state.queueLoadError = queueData.loadError;
+  else {state.queue=queueData;state.queueLoadError="";}
+  updateQueueNavigation();
   state.apps = apps;
-  state.tasks = tasks;
+  state.tasks = mergeTaskList(tasks);
   state.prompts = prompts;
   state.promptModels = models;
   state.albums = folders;
-  if (!state.albums.some((folder) => folder.id === state.selectedAlbumId)) {
-    state.selectedAlbumId = state.albums[0]?.id || "works";
+  if (!HuashiRooms.displayFolders(state.albums).some((folder) => folder.id === state.selectedAlbumId)) {
+    state.selectedAlbumId = "works";
   }
-  await refreshAlbumItems();
+  if (state.view === "gallery") await refreshAlbumItems();
   if (!state.selectedAppId && apps.length) state.selectedAppId = apps[0].id;
   render();
+  if (state.promptSection === "portrait") ensurePortraitData();
   managePolling();
+}
+
+function mergeTaskList(tasks) {
+  const current = new Map(state.tasks.map((task) => [task.id, task]));
+  return tasks.map((task) => {
+    const existing = current.get(task.id);
+    if (existing && !existing.is_summary) {
+      if (["queued", "running"].includes(task.status)) {
+        return { ...existing, ...task, input_payload: existing.input_payload, prompt: existing.prompt, outputs: existing.outputs, is_summary: false };
+      }
+      if (existing.updated_at === task.updated_at) return { ...task, ...existing };
+    }
+    return task;
+  });
+}
+
+async function loadTaskDetail(taskId) {
+  if (!taskId || state.loadingTaskDetails[taskId]) return;
+  state.loadingTaskDetails[taskId] = true;
+  try {
+    const { task } = await api(`/api/tasks/${encodeURIComponent(taskId)}`);
+    state.tasks = state.tasks.map((item) => item.id === task.id ? task : item);
+    if (!state.tasks.some((item) => item.id === task.id)) state.tasks.unshift(task);
+    if (state.view === "result" && (state.selectedTaskId === task.id || (!state.selectedTaskId && state.tasks[0]?.id === task.id))) {
+      renderTitle();
+      renderResult();
+    }
+  } catch (error) {
+    setNotice(error.message, "error");
+  } finally {
+    delete state.loadingTaskDetails[taskId];
+  }
 }
 
 async function refreshAlbums() {
   const { folders } = await api("/api/albums");
   state.albums = folders;
-  if (!state.albums.some((folder) => folder.id === state.selectedAlbumId)) {
+  if (!HuashiRooms.displayFolders(state.albums).some((folder) => folder.id === state.selectedAlbumId && !folder.placeholder)) {
     state.selectedAlbumId = state.albums[0]?.id || "works";
   }
   await refreshAlbumItems();
 }
 
 async function refreshAlbumItems() {
-  if (state.selectedAlbumId === "__pose__") {
-    const data = await api(`/api/pose?path=${encodeURIComponent(state.posePath || "")}&limit=120`);
-    state.poseData = data;
+  const request=++state.albumRequest;
+  state.albumLoading=true;
+  try {
+  const folder = HuashiRooms.displayFolders(state.albums).find((item) => item.id === state.selectedAlbumId);
+  if (folder?.placeholder) {
+    state.albumItems = [];
+    state.poseData = null;
+    state.faceData = null;
+    return;
+  }
+  if (HuashiRooms.directoryLibrary(state.selectedAlbumId)) {
+    const data = await api(`/api/pose?path=${encodeURIComponent(HuashiRooms.directoryPath(state.selectedAlbumId, state.posePath || ""))}&offset=${state.galleryPage*state.galleryPageSize}&limit=${state.galleryPageSize}`);
+    const items = await HuashiMaterialBag.withDirectoryThumbnails(data.items || []);
+    if(request!==state.albumRequest)return;
+    state.poseData = HuashiRooms.directoryData(state.selectedAlbumId, data);
+    state.albumItems = items;
+    return;
+  }
+  if (state.selectedAlbumId === "__faces__") {
+    const data = await api(`/api/faces?path=${encodeURIComponent(state.facePath || "")}&offset=${state.galleryPage*state.galleryPageSize}&limit=${state.galleryPageSize}`);
+    if(request!==state.albumRequest)return;
+    state.faceData = data;
     state.albumItems = data.items || [];
     return;
   }
   const { items } = await api(`/api/albums/items?folder_id=${encodeURIComponent(state.selectedAlbumId || "works")}`);
+  if(request!==state.albumRequest)return;
   state.poseData = null;
+  state.faceData = null;
   state.albumItems = items;
+  } finally {if(request===state.albumRequest)state.albumLoading=false;}
 }
 
 function selectedApp() {
   return state.apps.find((app) => app.id === state.selectedAppId) || state.apps[0];
 }
 
-function currentAlbum() {
-  return state.albums.find((folder) => folder.id === state.selectedAlbumId) || state.albums[0];
+function appPromptInput(app) {
+  const inputs = appInputs(app || {});
+  const roleMatch = inputs.find((input) => input.role === "prompt");
+  if (roleMatch) return roleMatch;
+  const textInputs = inputs.filter((input) => ["textarea", "text"].includes(input.type));
+  const keywordMatch = textInputs.find((input) => {
+    const text = `${input.id || ""} ${input.label || ""} ${input.fieldName || ""}`.toLowerCase();
+    return ["prompt", "提示词", "正向", "文本", "描述", "输入文本", "caption"].some((keyword) => text.includes(keyword));
+  });
+  if (keywordMatch) return keywordMatch;
+  return textInputs.length === 1 ? textInputs[0] : null;
 }
 
-function setView(view) {
-  state.view = view;
-  if (view === "gallery") {
-    state.galleryFolderOpen = false;
-    state.galleryViewerOpen = false;
+function promptCapableApps() {
+  return state.apps.filter((app) => appPromptInput(app));
+}
+
+function currentAlbum() {
+  return HuashiRooms.displayFolders(state.albums).find((folder) => folder.id === state.selectedAlbumId);
+}
+
+function setView(view, {historyMode = "push"} = {}) {
+  const route = HuashiRooms.parseRoute(view);
+  view = route.view;
+  if(state.view==='inspiration' && view!=='inspiration') {
+    $('roomUnifiedSearch')?.roomSearch?.destroy();
+    $('roomInspiration').inspirationController?.destroy();
+    $('roomInspiration').inspirationController=null;
+    $('roomInspiration').roomContext=null;
   }
-  if (window.location.hash !== `#${view}`) history.replaceState(null, "", `#${view}`);
+  if(state.view==='prompts' && (view!=='prompts' || route.promptSection==='portrait')) releasePromptPresentation();
+  state.view = view;
+  if (view === "inspiration") state.inspirationRoute = route.inspirationRoute || HuashiInspirationNav.parse("#inspiration");
+  if (view !== "gallery") state.galleryViewerOpen = false;
+  if (view === "inspiration" && route.kind) HuashiRooms.inspirationState.kind = route.kind;
+  if (view !== "prompts") { state.promptSection = ""; state.promptTool = ""; }
+  if (view === "prompts") {
+    state.promptSection = route.promptSection || "library";
+    state.promptTool = route.promptTool || "";
+  }
+  if (view === "history") loadHistorySummaries();
+  if (view === "queue") loadData().catch(error=>showToast(error.message,"error"));
+  if (view === "gallery") {
+    state.galleryFolderOpen = true;
+    state.galleryViewerOpen = false;
+    refreshAlbumItems().then(() => { if (state.view === "gallery") render(); }).catch((error) => showToast(error.message, "error"));
+  }
+  if (state.promptSection === "portrait") ensurePortraitData();
+  const hash = route.canonicalHash || (state.promptSection === "portrait" ? "inspiration/prompts/portrait" : view === "prompts" ? "inspiration/prompts" : state.promptTool || view);
+  if (historyMode !== "none" && window.location.hash !== `#${hash}`) history[historyMode === "replace" ? "replaceState" : "pushState"](null, "", `#${hash}`);
   render();
+  managePolling();
+  if (view !== "inspiration") window.scrollTo(0, 0);
+}
+
+function setPromptSection(section) {
+  state.view = "prompts";
+  state.promptSection = section || "";
+  state.promptTool = "";
+  if (section === "portrait") ensurePortraitData();
+  const hash = section === "portrait" ? "#inspiration/prompts/portrait" : "#inspiration/prompts";
+  if (window.location.hash !== hash) history.pushState(null, "", hash);
+  render();
+  window.scrollTo(0, 0);
 }
 
 function render() {
+  document.body.classList.toggle("gallery-viewer-open", state.view === "gallery" && state.galleryViewerOpen);
   const shell = $("app");
-  shell.dataset.view = state.view;
+  shell.dataset.view = state.promptSection === "portrait" ? "portrait" : state.view;
+  const activeScreen = state.view === "prompts" && state.promptSection === "portrait" ? "portrait" : state.view;
   document.querySelectorAll("[data-screen]").forEach((screen) => {
-    screen.classList.toggle("active", screen.dataset.screen === state.view);
+    screen.classList.toggle("active", screen.dataset.screen === activeScreen);
   });
   document.querySelectorAll("[data-nav-view]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.navView === state.view);
+    button.classList.toggle("active", button.dataset.navView === "queue" ? state.view === "queue" : button.dataset.navView === (HuashiRooms.roomForView(state.view) || state.view));
   });
-  $("backButton").classList.toggle("visible", state.view !== "home");
+  $("backButton").classList.toggle("visible", state.view !== "home" || Boolean(state.promptSection));
   renderTitle();
-  renderCategories();
-  renderStyles();
-  renderCompose();
-  renderResult();
-  renderHistory();
-  renderGallery();
-  renderPrompts();
-  renderRewriteModels();
-  renderAgentModels();
+  renderActiveScreen(activeScreen);
+}
+
+function renderActiveScreen(activeScreen) {
+  if (activeScreen === "home") {
+    HuashiRooms.renderHome($("roomHome"), setView);
+    return;
+  }
+  if (activeScreen === "create") {
+    renderCategories();
+    renderStyles();
+    $("pendingInspiration").hidden = !state.pendingComposePrompt;
+    return;
+  }
+  if (activeScreen === "inspiration") {
+    HuashiRooms.renderInspiration($("roomInspiration"), {
+      navigate: setView, api, copy: copyText, toast: showToast, route: state.inspirationRoute,
+      getPrompts: () => state.prompts,
+      savePrompt: (content, options) => HuashiCreation.savePrompt(content, state.prompts, {api, toast:showToast, folderId:state.promptFolderId, ...options, saved:prompt=>{state.prompts=[prompt,...state.prompts.filter(p=>p.id!==prompt.id)];HuashiPromptFolders.refresh(api).catch(error=>showToast(error.message,'error'));}}),
+      managePrompt: id => {setView('inspiration/prompts'); editPrompt(id);},
+      favoritePrompt: togglePersonalPromptFavorite,
+      redraw: () => { if (state.view === "inspiration") renderActiveScreen("inspiration"); },
+      usePrompt: (prompt) => { state.pendingComposePrompt = prompt; setView("create"); },
+    });
+    return;
+  }
+  if (activeScreen === "settings") {
+    HuashiRooms.renderSettings($("roomSettings"), state);
+    return;
+  }
+  if (activeScreen === "compose") {
+    renderCompose();
+    return;
+  }
+  if (activeScreen === "result") {
+    renderResult();
+    return;
+  }
+  if (activeScreen === "queue") {
+    renderRunPodQueue();
+    return;
+  }
+  if (activeScreen === "history") {
+    renderHistory();
+    return;
+  }
+  if (activeScreen === "gallery") {
+    renderGallery();
+    return;
+  }
+  if (activeScreen === "prompts") {
+    renderPrompts();
+    renderRewriteModels();
+    renderAgentModels();
+    return;
+  }
+  if (activeScreen === "portrait") {
+    renderPortrait();
+  }
 }
 
 function renderTitle() {
   const titles = {
-    home: ["画室", "样式广场"],
-    compose: [selectedApp()?.name || "生成", "设置输入"],
+    home: ["画室", "个人 AI 创作工作台"],
+    create: ["创作间", "选择画布，开始生成"],
+    inspiration: ["灵感屋", "提示词 · 动画 · 图像"],
+    settings: ["设置", "系统与维护"],
+    compose: ["创作间", selectedApp()?.name || "创作画布"],
     result: ["生成结果", resultHint()],
+    queue: ["生成队列", "RunPod · 后台依次生成"],
     history: ["生成记录", `${filteredTasks().length} 条记录`],
-    gallery: ["画册", state.galleryFolderOpen ? `${currentAlbum()?.name || "文件夹"} · ${artworkItems().length} 张图片` : "选择文件夹"],
-    prompts: ["提示词库", `${filteredPrompts().length} 条提示词`],
+    gallery: ["陈列室", "作品与素材管理"],
+    prompts: promptTitle(),
   };
   const [title, hint] = titles[state.view] || titles.home;
   $("pageTitle").textContent = title;
   $("pageHint").textContent = hint;
+}
+
+function promptTitle() {
+  if (state.promptSection === "portrait") return ["人像工坊", portraitTitleHint()];
+  if (state.promptSection === "library") return ["提示词", `灵感屋 · ${filteredPrompts().length} 条提示词`];
+  return ["灵感屋", "选择工具"];
+}
+
+function portraitTitleHint() {
+  const count = selectedPortraitCount();
+  return count ? `已选 ${count} 个素材` : "挑选素材，装袋后带去创作";
 }
 
 function resultHint() {
@@ -157,17 +467,25 @@ function resultHint() {
 }
 
 function renderCategories() {
-  const categories = ["全部", ...new Set(state.apps.map((app) => app.category).filter(Boolean))];
+  const providerApps = state.apps.filter((app) => (app.provider || "runninghub") === state.homeProvider);
+  const categories = ["全部", ...new Set(providerApps.map((app) => app.category).filter(Boolean))];
   if (!categories.includes(state.category)) state.category = "全部";
   $("categorySelect").innerHTML = categories
     .map((name) => `<option value="${escapeAttr(name)}" ${state.category === name ? "selected" : ""}>${escapeHtml(name)}</option>`)
     .join("");
   if ($("sortSelect")) $("sortSelect").value = state.homeSort;
+  document.querySelectorAll("[data-home-provider]").forEach((button) => {
+    const active = button.dataset.homeProvider === state.homeProvider;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", active ? "true" : "false");
+  });
 }
 
 function renderStyles() {
   const query = state.search.trim().toLowerCase();
+  $("styleGrid").classList.toggle("runpod-grid", state.homeProvider === "runpod");
   let apps = state.apps.filter((app) => {
+    if ((app.provider || "runninghub") !== state.homeProvider) return false;
     const matchCategory = state.category === "全部" || app.category === state.category;
     const matchSearch = !query || `${app.name} ${app.category} ${app.description}`.toLowerCase().includes(query);
     return matchCategory && matchSearch;
@@ -177,10 +495,10 @@ function renderStyles() {
   const otherApps = apps.filter((app) => !app.favorite);
   $("favoriteSection").hidden = favorites.length === 0;
   $("favoriteGrid").innerHTML = favorites.map(styleCard).join("");
-  $("styleSectionTitle").textContent = state.category === "全部" ? "全部样式" : state.category;
+  $("styleSectionTitle").textContent = state.category === "全部" ? "全部画布" : state.category;
   $("styleGrid").innerHTML = otherApps.length
     ? otherApps.map(styleCard).join("")
-    : `<div class="empty-state">${favorites.length ? "下面暂无其他样式" : "没有匹配的样式"}</div>`;
+    : `<div class="empty-state">${favorites.length ? "暂无其他画布" : "没有匹配的画布"}</div>`;
   document.querySelectorAll("[data-style-id]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedAppId = button.dataset.styleId;
@@ -199,16 +517,15 @@ function sortApps(apps) {
 }
 
 function styleCard(app) {
+  const inputs = appInputs(app);
+  const imageCount = inputs.filter((input) => input.type === "image").length;
+  const description = app.description && app.description.length >= 10 && /[\u4e00-\u9fff]/.test(app.description)
+    ? app.description : imageCount ? `上传${imageCount > 1 ? ` ${imageCount} 张` : ""}图片，进入编辑画布` : "填写提示词，开始图片创作";
   return `
-    <button class="style-card" type="button" data-style-id="${app.id}">
-      <span class="style-thumb ${app.cover_url ? "has-cover" : ""}" style="${coverStyle(app)}">
-        ${app.cover_url ? `<img loading="lazy" src="${app.cover_url}" alt="">` : ""}
-      </span>
-      <span class="style-name">${escapeHtml(app.name)}</span>
-      <span class="style-meta">
-        <span>${escapeHtml(app.category)}</span>
-        ${app.favorite ? "<b>常用</b>" : ""}
-      </span>
+    <button class="style-card room-app-row" type="button" data-style-id="${escapeAttr(app.id)}">
+      <span class="room-app-preview"><img src="${escapeAttr(app.cover_thumb_url || app.cover_url || appVisualUrl(app))}" alt="${escapeAttr(app.name)} 效果图" loading="lazy"></span>
+      <span class="room-app-copy"><span class="style-name">${escapeHtml(app.name)}</span><small>${escapeHtml(description)}</small></span>
+      <span class="style-meta">${escapeHtml(app.category)}</span><span class="room-app-arrow" aria-hidden="true">→</span>
     </button>
   `;
 }
@@ -216,13 +533,48 @@ function styleCard(app) {
 function renderCompose() {
   const app = selectedApp();
   if (!app) return;
-  $("composeCover").style = coverStyle(app);
-  $("composeCover").classList.toggle("has-cover", Boolean(app.cover_url));
+  document.querySelector('[data-screen="compose"]').classList.toggle("queue-compose-mode", app.provider === "runpod");
+  $("queueComposeFooter").hidden = app.provider !== "runpod";
+  $("generateButton").textContent = app.provider === "runpod" ? "＋ 加入队列" : "开始生成";
+  $("composeCover").hidden = false;
+  $("composeCover").innerHTML = `<img src="${escapeAttr(app.cover_thumb_url || app.cover_url || appVisualUrl(app))}" alt="${escapeAttr(app.name)} 效果图">`;
   $("composeTitle").textContent = app.name;
-  $("composeMeta").textContent = `${app.category} · ${outputLabel(app)}`;
-  $("dynamicInputs").innerHTML = appInputs(app).map(inputControl).join("");
-  bindDynamicInputs();
+  $("composeMeta").textContent = `${app.provider === "runpod" ? "RunPod" : "RunningHub"} · ${app.description || app.category}`;
+  // Polling or switching rooms must not rebuild an unchanged form and discard uploads.
+  if ($("dynamicInputs").dataset.appId !== app.id) {
+    const promptId = appPromptInput(app)?.id;
+    const { main, advanced } = HuashiRooms.splitInputs(appInputs(app).map(input => input.id === promptId ? {...input, role: "prompt"} : input));
+    // Layout follows each live workflow's inputs; field names and submit payload stay unchanged.
+    const images = main.filter(input => ["image", "file"].includes(input.type));
+    const text = main.filter(input => !["image", "file"].includes(input.type));
+    const visibleAdvanced = advanced.filter(input => ["batch_size", "resolution"].includes(input.id));
+    const foldedAdvanced = advanced.filter(input => !["batch_size", "resolution"].includes(input.id));
+    const promptFields = text.filter(input => input.type === "textarea" || input.role === "prompt");
+    const otherFields = [...text.filter(input => !promptFields.includes(input)), ...visibleAdvanced];
+    $("dynamicInputs").innerHTML = (images.length ? `<section class="moon-input-images"><h3>参考图片</h3><div class="moon-image-fields">${images.map(inputControl).join("")}</div></section>` : "") +
+      `<section class="moon-input-text">${promptFields.map(input => /negative|负向|负面/i.test(`${input.id} ${input.label}`) ? `<details class="moon-negative"><summary>${escapeHtml(input.label || "负向提示词")}</summary>${inputControl(input)}</details>` : inputControl(input)).join("")}</section>` +
+      (otherFields.length ? `<section class="moon-input-parameters"><h3>画布参数</h3><div class="moon-parameter-grid">${otherFields.map(inputControl).join("")}</div></section>` : "") +
+      (foldedAdvanced.length ? `<details class="room-advanced"><summary>高级参数 <span>采样、步数与随机种子</span></summary><div class="room-advanced-fields">${foldedAdvanced.map(inputControl).join("")}</div></details>` : "");
+    $("dynamicInputs").classList.toggle("moon-has-images", images.length > 0);
+    $("dynamicInputs").classList.toggle("moon-two-images", images.length > 1);
+    $("dynamicInputs").dataset.appId = app.id;
+    bindDynamicInputs();
+  }
+  applyPendingComposePrompt(app);
   updateGenerateState();
+}
+
+function applyPendingComposePrompt(app) {
+  const content = String(state.pendingComposePrompt || "").trim();
+  if (!content) return;
+  const promptInput = appPromptInput(app);
+  if (!promptInput) return;
+  const field = $("createTaskForm").querySelector(`[name="${CSS.escape(`input_${promptInput.id}`)}"]`);
+  if (!field) return;
+  field.value = content;
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+  state.pendingComposePrompt = "";
+  showToast("已把提示词填入应用", "info");
 }
 
 function appInputs(app) {
@@ -267,16 +619,18 @@ function inputControl(input) {
       <div class="file-field" data-required="${input.required ? "1" : "0"}">
         <div class="field-title">${label}</div>
         <div class="picker-row">
+          <button type="button" class="upload-drop compact bag-upload-button" data-material-bag="${escapeAttr(input.id)}">从素材袋选择</button>
           <label class="upload-drop compact" for="${inputId}_gallery">
             <input id="${inputId}_gallery" name="${name}" type="file" accept="image/*" data-file-input="${escapeAttr(input.id)}" />
             <span class="upload-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M20 16.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2.5" /></svg></span>
-            <span>相册</span>
+            <span>上传图片</span>
           </label>
           <button class="upload-drop compact" type="button" data-artwork-target="${escapeAttr(input.id)}">
             <span class="upload-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Zm3 12 3.2-3.2 2.3 2.3L16 11l3 4.2M8.5 8.5h.01" /></svg></span>
-            <span>作品库</span>
+            <span>从陈列室选择</span>
           </button>
         </div>
+        <img class="creation-input-preview" data-input-preview="${escapeAttr(input.id)}" alt="当前参考图片" hidden>
         <input type="hidden" name="${name}_artwork" data-artwork-input="${escapeAttr(input.id)}" />
         <div class="file-status-row">
           <small class="file-name" data-file-label="${escapeAttr(input.id)}" data-empty-label="${escapeAttr(emptyLabel)}">${emptyLabel}</small>
@@ -311,7 +665,7 @@ function inputControl(input) {
   const tag = input.type === "textarea" ? "textarea" : "input";
   if (tag === "textarea") {
     const promptButton = input.role === "prompt"
-      ? `<button class="inline-tool" type="button" data-prompt-target="${escapeAttr(input.id)}">从提示词库选择</button>`
+      ? `<button class="inline-tool" type="button" data-prompt-target="${escapeAttr(input.id)}">从灵感屋选择</button><button class="inline-tool" type="button" data-save-canvas-prompt="${escapeAttr(input.id)}">保存到提示词库</button>`
       : "";
     return `
       <div class="field-block ${input.role === "prompt" ? "prompt-field" : ""}">
@@ -321,10 +675,10 @@ function inputControl(input) {
     `;
   }
   return `
-    <label class="field-block">
-      <span>${label}</span>
-      <input name="${name}" type="${input.type === "number" ? "number" : "text"}" value="${escapeAttr(input.defaultValue || "")}" ${required} />
-    </label>
+    <div class="field-block">
+      <span><label for="${inputId}">${label}</label>${input.role === 'prompt' ? `<button class="inline-tool" type="button" data-prompt-target="${escapeAttr(input.id)}">从灵感屋选择</button><button class="inline-tool" type="button" data-save-canvas-prompt="${escapeAttr(input.id)}">保存到提示词库</button>` : ''}</span>
+      <input id="${inputId}" name="${name}" type="${input.type === 'number' ? 'number' : 'text'}" ${input.type === 'number' && ['cfg', 'denoise', 'lora_strength'].includes(input.id) ? 'step="any"' : ''} value="${escapeAttr(input.defaultValue || '')}" ${required} />
+    </div>
   `;
 }
 
@@ -339,6 +693,7 @@ function bindDynamicInputs() {
       });
       const artworkInput = document.querySelector(`[data-artwork-input="${CSS.escape(key)}"]`);
       if (artworkInput) artworkInput.value = "";
+      showInputPreview(key, "");
       const label = document.querySelector(`[data-file-label="${CSS.escape(key)}"]`);
       if (label) label.textContent = file.name;
       updateGenerateState();
@@ -351,6 +706,15 @@ function bindDynamicInputs() {
   $("dynamicInputs").querySelectorAll("[data-prompt-target]").forEach((button) => {
     button.addEventListener("click", () => openPromptPicker(button.dataset.promptTarget));
   });
+  $("dynamicInputs").querySelectorAll("[data-save-canvas-prompt]").forEach(button => {
+    button.onclick = () => {
+      const field = $("createTaskForm").querySelector(`[name="${CSS.escape(`input_${button.dataset.saveCanvasPrompt}`)}"]`);
+      HuashiCreation.savePrompt(field?.value || "", state.prompts, {api,toast:showToast,folderId:state.promptFolderId,saved:prompt => {
+        state.prompts = [prompt, ...state.prompts];
+        HuashiPromptFolders.refresh(api).catch(error => showToast(error.message,"error"));
+      }});
+    };
+  });
   $("dynamicInputs").querySelectorAll("[data-artwork-target]").forEach((button) => {
     button.addEventListener("click", () => openArtworkPicker(button.dataset.artworkTarget));
   });
@@ -361,6 +725,7 @@ function bindDynamicInputs() {
 
 function clearImageInput(key) {
   if (!key) return;
+  showInputPreview(key, "");
   document.querySelectorAll(`[data-file-input="${CSS.escape(key)}"]`).forEach((input) => {
     input.value = "";
   });
@@ -386,18 +751,24 @@ function updateGenerateState() {
     const field = form.querySelector(`[name="${CSS.escape(name)}"]`);
     return field && String(field.value || "").trim();
   });
-  $("generateButton").disabled = !ok;
+  $("generateButton").disabled = !ok || state.taskSubmitting;
+}
+
+async function loadHistorySummaries() {
+  try {
+    const {tasks}=await api("/api/tasks?summary=1");
+    if(state.view!=="history")return;
+    state.tasks=mergeTaskList(tasks);renderHistory();renderTitle();
+  }catch(error){showToast(error.message,"error");}
 }
 
 function renderHistory() {
-  const tasks = filteredTasks();
-  $("taskList").innerHTML = tasks.length ? tasks.map(recordRow).join("") : `<div class="empty-state">暂无记录</div>`;
-  $("taskList").querySelectorAll("[data-task-id]").forEach((row) => {
-    row.addEventListener("click", () => {
-      state.selectedTaskId = row.dataset.taskId;
-      setView("result");
-    });
-  });
+  const tasks=filteredTasks(),w=HuashiPages.windowFor(tasks.length,state.historyPage,state.historyPageSize);
+  state.historyPage=w.page;
+  $("taskList").innerHTML=tasks.length ? tasks.slice(w.start,w.end).map(recordRow).join("") : '<div class="empty-state">暂无记录</div>';
+  $("historyPagination").innerHTML=HuashiPages.markup(tasks.length,w.page,w.size);
+  HuashiPages.bind($("historyPagination"),next=>{state.historyPage=next.page;state.historyPageSize=next.size;renderHistory();});
+  $("taskList").querySelectorAll("[data-task-id]").forEach(row=>row.onclick=()=>{state.selectedTaskId=row.dataset.taskId;setView("result");});
 }
 
 function artworkItems() {
@@ -407,100 +778,104 @@ function artworkItems() {
 }
 
 function renderGallery() {
+  document.body.classList.toggle("gallery-viewer-open", state.view === "gallery" && state.galleryViewerOpen);
   const target = $("artworkGallery");
   if (!target) return;
   renderAlbumFolders();
-  if (!state.galleryFolderOpen) {
-    target.className = "artwork-gallery album-landing";
-    target.innerHTML = renderAlbumLanding();
-    bindAlbumLanding(target);
+  renderGallerySelection();
+  const folder = currentAlbum();
+  $("galleryName").textContent = folder?.displayName || folder?.name || "我的作品";
+  $("galleryCount").textContent = folder?.virtual ? "只读参考素材" : `${artworkItems().length} 张图片 · 按分类整理`;
+  $("galleryPagination").innerHTML = "";
+  $("albumUploadInput").disabled = Boolean(state.albumLoading || folder?.placeholder || folder?.virtual);
+  $("albumUploadInput").parentElement.classList.toggle("is-disabled", $("albumUploadInput").disabled);
+  target.style.setProperty("--gallery-columns", state.galleryColumns);
+  if(state.albumLoading){target.className='artwork-gallery room-empty';target.textContent='正在读取分类…';return;}
+  if (folder?.placeholder) {
+    target.className = "artwork-gallery room-empty";
+    target.innerHTML = folder.virtual
+      ? `<strong>${escapeHtml(folder.displayName)}暂未挂载</strong><p>保留只读素材入口，正式素材目录不做任何变更。</p>`
+      : `<strong>${escapeHtml(folder.displayName)}</strong><p>${folder.id === "__inbox__" ? "为尚未归类的素材留一个位置，之后可以请 Codex 帮你整理。" : "在这里分类收藏其他参考素材。"}</p><button class="secondary-button" type="button" data-create-room-folder>创建这个分类</button>`;
+    target.querySelector("[data-create-room-folder]")?.addEventListener("click", async () => {
+      try {
+        const { folder: created } = await api("/api/albums", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: folder.displayName }) });
+        state.selectedAlbumId = created.id;
+        state.galleryPage = 0;
+        await refreshAlbums();
+        render();
+      } catch (error) { showToast(error.message, "error"); }
+    });
     return;
   }
-  if (state.selectedAlbumId === "__pose__") {
-    renderPoseGallery(target);
-    return;
-  }
+  if (HuashiRooms.directoryLibrary(state.selectedAlbumId)) { renderPoseGallery(target); return; }
+  if (state.selectedAlbumId === "__faces__") { renderFaceGallery(target); return; }
   const items = artworkItems();
   if (!items.length) {
-    target.className = "artwork-gallery empty-state";
-    target.innerHTML = "这个文件夹还没有图片";
+    target.className = "artwork-gallery room-empty";
+    target.innerHTML = `<strong>这里还没有图片</strong><p>上传素材到当前分类，或从创作间生成你的第一张作品。</p>`;
     return;
   }
+  const pages = Math.max(1, Math.ceil(items.length / state.galleryPageSize));
+  state.galleryPage = Math.min(state.galleryPage, pages - 1);
+  const start = state.galleryPage * state.galleryPageSize;
+  const visible = items.slice(start, start + state.galleryPageSize);
   state.galleryIndex = Math.min(Math.max(state.galleryIndex, 0), items.length - 1);
-  const item = items[state.galleryIndex];
-  target.className = "artwork-gallery photo-roll";
-  target.innerHTML = `
-    <div class="photo-grid">
-      ${items.map((thumb, index) => `
-        <button class="photo-tile" type="button" data-gallery-index="${index}" aria-label="打开图片 ${index + 1}">
-          <img class="${thumb.blurred ? "is-blurred" : ""}" loading="lazy" src="${thumb.url}" alt="">
-        </button>
-      `).join("")}
-    </div>
-    ${state.galleryViewerOpen ? galleryViewer(item, items.length) : ""}
-  `;
+  target.className = "artwork-gallery room-gallery-grid";
+  target.innerHTML = `<div class="photo-grid">${visible.map((thumb, index) => `
+    <div class="room-gallery-item"><label class="room-image-select"><input type="checkbox" data-gallery-select="${escapeAttr(thumb.id)}" aria-label="选择${escapeAttr(thumb.title || '图片')}" ${state.gallerySelected.has(thumb.id) ? 'checked' : ''}></label><button class="photo-tile" type="button" data-gallery-index="${start + index}" aria-label="打开图片 ${start + index + 1}">
+      <img class="${thumb.blurred ? "is-blurred" : ""}" loading="lazy" src="${escapeAttr(previewUrl(thumb))}" alt="">
+      <span class="room-photo-caption">${escapeHtml(thumb.title || thumb.app_name || thumb.path?.split("/").pop() || "图片")}</span>
+    </button></div>`).join("")}</div>${state.galleryViewerOpen ? galleryViewer(items[state.galleryIndex], items.length) : ""}`;
+  const pageNumbers = pages <= 7 ? Array.from({length:pages},(_,i)=>i) : [...new Set([0,pages-1,state.galleryPage-1,state.galleryPage,state.galleryPage+1])].filter(n=>n>=0&&n<pages).sort((a,b)=>a-b);
+  const pageLinks = pageNumbers.map((n,i)=>`${i && n-pageNumbers[i-1]>1?'<span>…</span>':''}<button type="button" class="gallery-page-number ${n===state.galleryPage?'active':''}" data-gallery-page="${n}" ${n===state.galleryPage?'aria-current="page"':''}>${n+1}</button>`).join('');
+  $("galleryPagination").innerHTML = `<button class="secondary-button" type="button" data-gallery-page="${state.galleryPage - 1}" ${state.galleryPage === 0 ? "disabled" : ""}>上一页</button>${pageLinks}<span>共 ${items.length} 张</span><button class="secondary-button" type="button" data-gallery-page="${state.galleryPage + 1}" ${state.galleryPage + 1 === pages ? "disabled" : ""}>下一页</button>`;
+  $("galleryPagination").querySelectorAll("[data-gallery-page]").forEach((button) => button.addEventListener("click", () => {
+    state.galleryPage = Number(button.dataset.galleryPage);
+    state.galleryViewerOpen = false;
+    renderGallery();
+    $("galleryName").scrollIntoView({ block: "start", behavior: "smooth" });
+  }));
+  target.querySelectorAll('[data-gallery-select]').forEach(input=>input.onchange=()=>{
+    if(input.checked) state.gallerySelected.add(input.dataset.gallerySelect); else state.gallerySelected.delete(input.dataset.gallerySelect);
+    renderGallerySelection();
+  });
   bindGalleryActions(target, items);
+  bindRoomViewer(target, items);
 }
 
 function galleryViewer(item, total) {
-  const folders = state.albums || [];
-  const canBlur = item.task_id && item.output_path;
-  const canManage = item.source_type !== "pose";
-  return `
-    <div class="photo-viewer" data-gallery-stage>
-      <button class="viewer-close" type="button" data-gallery-close aria-label="关闭">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-      </button>
-      <img class="${item.blurred ? "is-blurred" : ""}" src="${item.url}" alt="作品">
-      <div class="viewer-actions">
-        ${canBlur ? `<button type="button" data-toggle-output-blur="${escapeAttr(item.task_id)}" data-output-path="${escapeAttr(item.output_path || item.path)}">
-          ${item.blurred ? "还原" : "模糊"}
-        </button>` : ""}
-        ${canManage ? `
-          <button type="button" data-reorder-album-item="${escapeAttr(item.id)}" data-direction="up">前移</button>
-          <button type="button" data-reorder-album-item="${escapeAttr(item.id)}" data-direction="down">后移</button>
-          <label class="viewer-move-select">
-            <span>移到</span>
-            <select data-move-album-item="${escapeAttr(item.id)}">
-              ${folders.filter((folder) => !folder.virtual).map((folder) => `<option value="${escapeAttr(folder.id)}" ${folder.id === item.folder_id ? "selected" : ""}>${escapeHtml(folder.name)}</option>`).join("")}
-            </select>
-          </label>
-          <button class="danger" type="button" data-delete-album-item="${escapeAttr(item.id)}">删除</button>
-        ` : ""}
-      </div>
-      <div class="viewer-meta">
-        <span>${state.galleryIndex + 1} / ${total}</span>
-        <small>${escapeHtml(item.title || item.app_name || "图片")} · ${formatTime(item.created_at)}</small>
-      </div>
-    </div>
-  `;
+  if (!item) return "";
+  return HuashiGallery.viewer(item, {folders:state.albums || [],index:state.galleryIndex,total,zoom:state.galleryZoom,quiet:state.galleryQuiet,time:formatTime(item.created_at),creationActions:HuashiCreation.imageActions(item.path,item.title,previewUrl(item))});
+}
+
+function bindRoomViewer(root, items) {
+  bindCreationImages(root);
+  root.querySelector("[data-gallery-stage]")?.focus({preventScroll:true});
+  root.querySelector('[data-viewer-quiet]')?.addEventListener('click',()=>{state.galleryQuiet=!state.galleryQuiet;renderGallery();});
+  root.querySelector('[data-room-zoom-reset]')?.addEventListener('click',()=>{state.galleryZoom=1;renderGallery();});
+  root.querySelector('.room-viewer-image')?.addEventListener('click',event=>{if(event.target===event.currentTarget){state.galleryViewerOpen=false;renderGallery();}});
+  const move = (delta) => { state.galleryIndex = (state.galleryIndex + delta + items.length) % items.length; state.galleryZoom = 1; renderGallery(); };
+  root.querySelector("[data-room-image-prev]")?.addEventListener("click", () => move(-1));
+  root.querySelector("[data-room-image-next]")?.addEventListener("click", () => move(1));
+  root.querySelectorAll("[data-room-zoom]").forEach((button) => button.addEventListener("click", () => {
+    state.galleryZoom = Math.min(3, Math.max(0.5, state.galleryZoom + Number(button.dataset.roomZoom)));
+    renderGallery();
+  }));
+  root.querySelector("[data-room-copy-image]")?.addEventListener("click", (event) => copyText(new URL(items[state.galleryIndex].url, location.origin).href, event.currentTarget));
 }
 
 function renderAlbumFolders() {
   const target = $("albumFolderList");
   if (!target) return;
-  if (!state.galleryFolderOpen) {
-    target.innerHTML = "";
-    return;
-  }
-  target.innerHTML = (state.albums || []).map((folder) => `
-    <button class="album-folder ${folder.id === state.selectedAlbumId ? "active" : ""}" type="button" data-album-folder="${escapeAttr(folder.id)}">
-      ${escapeHtml(folder.name)}
-      <span>${Number(folder.item_count || 0)}</span>
-    </button>
-  `).join("");
-  target.querySelectorAll("[data-album-folder]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      state.selectedAlbumId = button.dataset.albumFolder || "works";
-      state.posePath = "";
-      state.galleryIndex = 0;
-      state.galleryViewerOpen = false;
-      state.galleryFolderOpen = true;
-      await refreshAlbumItems();
-      renderGallery();
-      renderTitle();
-    });
-  });
+  target.innerHTML = HuashiRooms.displayFolders(state.albums).map((folder) => `<button class="album-folder ${folder.id === state.selectedAlbumId ? "active" : ""}" type="button" data-album-folder="${escapeAttr(folder.id)}"><span>${escapeHtml(folder.displayName)}</span><small>${folder.placeholder ? (folder.virtual ? "未挂载" : "未创建") : folder.virtual ? "参考" : Number(folder.item_count || 0)}</small></button>`).join("");
+  target.querySelectorAll("[data-album-folder]").forEach((button) => button.addEventListener("click", async () => {
+    state.gallerySelected.clear();
+    state.selectedAlbumId = button.dataset.albumFolder || "works";
+    state.albumLoading=true;state.albumItems=[];state.poseData=null;state.faceData=null;renderGallery();
+    state.posePath = ""; state.facePath = ""; state.galleryPage = 0; state.galleryIndex = 0; state.galleryZoom = 1; state.galleryViewerOpen = false; state.galleryFolderOpen = true;
+    try {await refreshAlbumItems();} catch(error){showToast(error.message,"error");}
+    renderGallery(); renderTitle();
+  }));
 }
 
 function renderPoseGallery(target) {
@@ -511,7 +886,7 @@ function renderPoseGallery(target) {
   target.className = "artwork-gallery pose-browser";
   target.innerHTML = `
     <div class="pose-path-bar">
-      <button type="button" data-pose-path="">POSE</button>
+      <button type="button" data-pose-path="">${escapeHtml(HuashiRooms.directoryLibrary(state.selectedAlbumId).label)}</button>
       ${(data.breadcrumbs || []).map((crumb) => `
         <span>/</span>
         <button type="button" data-pose-path="${escapeAttr(crumb.path)}">${escapeHtml(crumb.name)}</button>
@@ -532,22 +907,25 @@ function renderPoseGallery(target) {
       <div class="photo-grid">
         ${items.map((thumb, index) => `
           <button class="photo-tile" type="button" data-gallery-index="${index}" aria-label="打开图片 ${index + 1}">
-            <img loading="lazy" src="${thumb.url}" alt="">
+            <img loading="lazy" src="${escapeAttr(previewUrl(thumb))}" alt="">
           </button>
         `).join("")}
       </div>
     ` : ""}
-    ${data.next_offset !== null ? `<button class="secondary-button pose-more-button" type="button" data-pose-more="${Number(data.next_offset)}">加载更多（${items.length}/${Number(data.image_count || items.length)}）</button>` : ""}
-    ${!(data.directories || []).length && !items.length ? `<div class="empty-state">这个 POSE 文件夹没有图片</div>` : ""}
+    ${HuashiPages.markup(data.image_count || 0,state.galleryPage,state.galleryPageSize)}
+    ${!(data.directories || []).length && !items.length ? `<div class="empty-state">这个素材文件夹没有图片</div>` : ""}
     ${state.galleryViewerOpen && item ? galleryViewer(item, items.length) : ""}
   `;
   bindPoseGalleryActions(target, items);
+  HuashiPages.bind(target,async next=>{state.galleryPage=next.page;state.galleryPageSize=next.size;state.galleryViewerOpen=false;state.galleryIndex=0;await refreshAlbumItems();renderGallery();});
+  bindRoomViewer(target, items);
 }
 
 function bindPoseGalleryActions(root, items) {
   root.querySelectorAll("[data-pose-path]").forEach((button) => {
     button.addEventListener("click", async () => {
       state.posePath = button.dataset.posePath || "";
+      state.galleryPage = 0;
       state.galleryIndex = 0;
       state.galleryViewerOpen = false;
       await refreshAlbumItems();
@@ -555,12 +933,104 @@ function bindPoseGalleryActions(root, items) {
       renderTitle();
     });
   });
-  root.querySelector("[data-pose-more]")?.addEventListener("click", async (event) => {
-    const offset = Number(event.currentTarget.dataset.poseMore || 0);
-    const data = await api(`/api/pose?path=${encodeURIComponent(state.posePath || "")}&offset=${offset}&limit=120`);
-    state.poseData = { ...data, items: [...(state.poseData?.items || []), ...(data.items || [])] };
-    state.albumItems = state.poseData.items;
+  root.querySelectorAll("[data-gallery-index]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.galleryIndex = Number(button.dataset.galleryIndex || 0);
+      state.galleryZoom = 1;
+      state.galleryViewerOpen = true;
+      renderGallery();
+    });
+  });
+  root.querySelector("[data-gallery-close]")?.addEventListener("click", () => {
+    state.galleryViewerOpen = false;
     renderGallery();
+  });
+  const stage = root.querySelector("[data-gallery-stage]");
+  const image = stage?.querySelector("img");
+  let startX = 0;
+  let currentX = 0;
+  stage?.addEventListener("touchstart", (event) => {
+    startX = event.touches[0]?.clientX || 0;
+    currentX = startX;
+    image?.classList.add("dragging");
+  }, { passive: true });
+  stage?.addEventListener("touchmove", (event) => {
+    currentX = event.touches[0]?.clientX || startX;
+    const delta = currentX - startX;
+    if (image && Math.abs(delta) > 4) {
+      image.style.transform = `translateX(${delta * 0.28}px) scale(0.985)`;
+      image.style.opacity = String(Math.max(0.72, 1 - Math.abs(delta) / 420));
+    }
+  }, { passive: true });
+  stage?.addEventListener("touchend", (event) => {
+    const endX = event.changedTouches[0]?.clientX || 0;
+    const delta = endX - startX;
+    if (image) {
+      image.classList.remove("dragging");
+      image.style.transform = "";
+      image.style.opacity = "";
+    }
+    if (Math.abs(delta) > 45 && items.length) {
+      state.galleryIndex = (state.galleryIndex + (delta > 0 ? -1 : 1) + items.length) % items.length;
+      renderGallery();
+    }
+  }, { passive: true });
+}
+
+function renderFaceGallery(target) {
+  const data = state.faceData || { directories: [], items: [], breadcrumbs: [], next_offset: null, image_count: 0 };
+  const items = artworkItems();
+  state.galleryIndex = Math.min(Math.max(state.galleryIndex, 0), Math.max(items.length - 1, 0));
+  const item = items[state.galleryIndex];
+  target.className = "artwork-gallery pose-browser face-browser";
+  target.innerHTML = `
+    <div class="pose-path-bar">
+      <button type="button" data-face-path="">人脸库</button>
+      ${(data.breadcrumbs || []).map((crumb) => `
+        <span>/</span>
+        <button type="button" data-face-path="${escapeAttr(crumb.path)}">${escapeHtml(crumb.name)}</button>
+      `).join("")}
+    </div>
+    ${(data.directories || []).length ? `
+      <div class="album-folder-grid pose-folder-grid">
+        ${data.directories.map((folder) => `
+          <button class="album-folder-card pose-folder-card" type="button" data-face-path="${escapeAttr(folder.path)}">
+            <span class="folder-shape" aria-hidden="true"></span>
+            <strong>${escapeHtml(folder.name)}</strong>
+            <small>文件夹</small>
+          </button>
+        `).join("")}
+      </div>
+    ` : ""}
+    ${items.length ? `
+      <div class="photo-grid">
+        ${items.map((thumb, index) => `
+          <button class="photo-tile" type="button" data-gallery-index="${index}" aria-label="打开图片 ${index + 1}">
+            <img loading="lazy" src="${escapeAttr(previewUrl(thumb))}" alt="">
+          </button>
+        `).join("")}
+      </div>
+    ` : ""}
+    ${HuashiPages.markup(data.image_count || 0,state.galleryPage,state.galleryPageSize)}
+    ${!(data.directories || []).length && !items.length ? `<div class="empty-state">这个人脸库文件夹没有图片</div>` : ""}
+    ${state.galleryViewerOpen && item ? galleryViewer(item, items.length) : ""}
+  `;
+  bindFaceGalleryActions(target, items);
+  HuashiPages.bind(target,async next=>{state.galleryPage=next.page;state.galleryPageSize=next.size;state.galleryViewerOpen=false;state.galleryIndex=0;await refreshAlbumItems();renderGallery();});
+  bindRoomViewer(target, items);
+}
+
+function bindFaceGalleryActions(root, items) {
+  root.querySelectorAll("[data-face-path]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      state.facePath = button.dataset.facePath || "";
+      state.galleryPage = 0;
+      state.galleryIndex = 0;
+      state.galleryViewerOpen = false;
+      await refreshAlbumItems();
+      renderGallery();
+      renderTitle();
+    });
   });
   root.querySelectorAll("[data-gallery-index]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -606,7 +1076,7 @@ function bindPoseGalleryActions(root, items) {
 }
 
 function renderAlbumLanding() {
-  const folders = state.albums || [];
+  const folders = HuashiRooms.displayFolders(state.albums || []).filter(folder => !folder.placeholder);
   return folders.length
     ? `
       <div class="album-folder-grid">
@@ -627,6 +1097,7 @@ function bindAlbumLanding(root) {
     button.addEventListener("click", async () => {
       state.selectedAlbumId = button.dataset.openAlbumFolder || "works";
       state.posePath = "";
+      state.facePath = "";
       state.galleryIndex = 0;
       state.galleryViewerOpen = false;
       state.galleryFolderOpen = true;
@@ -652,6 +1123,7 @@ function bindGalleryActions(root, items) {
         return;
       }
       state.galleryIndex = Number(button.dataset.galleryIndex || 0);
+      state.galleryZoom = 1;
       state.galleryViewerOpen = true;
       renderGallery();
     });
@@ -756,65 +1228,94 @@ function bindAlbumTileDrag(tile, items) {
 }
 
 function openArtworkPicker(inputId, mode = "input") {
+  // Keep the draft while the existing full-screen picker is in use.
+  state.promptEditorSuspended = mode === "promptSample" && $("promptEditorDialog").open;
+  if (state.promptEditorSuspended) $("promptEditorDialog").close();
+  ++state.artworkPickerRequest;
   state.selectedArtworkField = inputId;
   state.artworkPickerMode = mode;
   state.artworkPickerAlbumOpen = false;
   state.artworkPickerAlbumId = "";
   state.artworkPickerPosePath = "";
+  state.artworkPickerFacePath = "";
   state.artworkPickerItems = [];
+  state.artworkPickerPage = 0;
   state.artworkPickerPoseData = null;
+  state.artworkPickerFaceData = null;
   $("artworkPicker").classList.remove("hidden");
   $("artworkPicker").setAttribute("aria-hidden", "false");
   renderArtworkPicker();
+  $('artworkPicker').querySelector('button')?.focus();
 }
 
 function closeArtworkPicker() {
+  ++state.artworkPickerRequest;
   $("artworkPicker").classList.add("hidden");
   $("artworkPicker").setAttribute("aria-hidden", "true");
   state.selectedArtworkField = "";
   state.artworkPickerAlbumOpen = false;
   state.artworkPickerAlbumId = "";
   state.artworkPickerPosePath = "";
+  state.artworkPickerFacePath = "";
   state.artworkPickerItems = [];
+  state.artworkPickerPage = 0;
   state.artworkPickerPoseData = null;
+  state.artworkPickerFaceData = null;
+  if (state.promptEditorSuspended) {
+    state.promptEditorSuspended = false;
+    if (!$("promptForm").classList.contains("hidden")) $("promptEditorDialog").showModal();
+  }
 }
 
 function renderArtworkPicker() {
   const target = $("artworkPickerList");
+  $('artworkPickerBack').hidden = !state.artworkPickerAlbumOpen;
+  $('artworkPickerBack').onclick=()=>{state.artworkPickerAlbumOpen=false;renderArtworkPicker();};
   if (!state.artworkPickerAlbumOpen) {
     target.className = "artwork-picker-folders album-folder-grid";
-    target.innerHTML = (state.albums || []).map((folder) => `
+    target.innerHTML = HuashiRooms.displayFolders(state.albums).filter(folder => !folder.placeholder).map((folder) => `
       <button class="album-folder-card" type="button" data-picker-folder="${escapeAttr(folder.id)}">
         <span class="folder-shape" aria-hidden="true"></span>
-        <strong>${escapeHtml(folder.name)}</strong>
+        <strong>${escapeHtml(folder.displayName || folder.name)}</strong>
         <small>${folder.virtual ? `${Number(folder.directory_count || 0)} 个文件夹` : `${Number(folder.item_count || 0)} 张图片`}</small>
       </button>
     `).join("");
     target.querySelectorAll("[data-picker-folder]").forEach((button) => {
-      button.addEventListener("click", () => openArtworkPickerFolder(button.dataset.pickerFolder || "works"));
+      button.addEventListener("click", () => openArtworkPickerFolder(button.dataset.pickerFolder || "works").catch(error=>showToast(error.message,"error")));
     });
     return;
   }
-  if (state.artworkPickerAlbumId === "__pose__") {
+  if (HuashiRooms.directoryLibrary(state.artworkPickerAlbumId)) {
     renderArtworkPosePicker(target);
     return;
   }
+  if (state.artworkPickerAlbumId === "__faces__") {
+    renderArtworkFacePicker(target);
+    return;
+  }
   const items = state.artworkPickerItems || [];
-  target.className = "artwork-picker-grid";
-  target.innerHTML = items.length ? artworkPickerImageButtons(items) : `<div class="empty-state">这个文件夹还没有可复用图片</div>`;
-  target.querySelectorAll("[data-use-artwork]").forEach((button) => {
-    button.addEventListener("click", () => useArtwork(Number(button.dataset.useArtwork || 0)));
-  });
+  const pages=Math.max(1,Math.ceil(items.length/state.artworkPickerPageSize));state.artworkPickerPage=Math.min(state.artworkPickerPage,pages-1);
+  const start=state.artworkPickerPage*state.artworkPickerPageSize;
+  target.className = 'room-artwork-picker';
+  const folder=HuashiRooms.displayFolders(state.albums).find(item=>item.id===state.artworkPickerAlbumId);
+  target.innerHTML = `<p class="room-muted">${escapeHtml(folder?.displayName || '图片')} · ${items.length} 张</p>${items.length ? `<div class="artwork-picker-grid">${artworkPickerImageButtons(items.slice(start,start+state.artworkPickerPageSize),start)}</div>` : '<div class="empty-state">这个文件夹还没有可复用图片</div>'}${HuashiPages.markup(items.length,state.artworkPickerPage,state.artworkPickerPageSize)}`;
+  HuashiPages.bind(target,next=>{state.artworkPickerPage=next.page;state.artworkPickerPageSize=next.size;renderArtworkPicker();});
+  target.querySelectorAll('[data-use-artwork]').forEach(button=>button.onclick=()=>useArtwork(Number(button.dataset.useArtwork || 0)));
 }
 
 async function openArtworkPickerFolder(folderId) {
   state.artworkPickerAlbumOpen = true;
   state.artworkPickerAlbumId = folderId;
   state.artworkPickerPosePath = "";
+  state.artworkPickerFacePath = "";
   state.artworkPickerItems = [];
+  state.artworkPickerPage = 0;
   state.artworkPickerPoseData = null;
-  if (folderId === "__pose__") {
+  state.artworkPickerFaceData = null;
+  if (HuashiRooms.directoryLibrary(folderId)) {
     await refreshArtworkPickerPose("");
+  } else if (folderId === "__faces__") {
+    await refreshArtworkPickerFace("");
   } else {
     const { items } = await api(`/api/albums/items?folder_id=${encodeURIComponent(folderId || "works")}`);
     state.artworkPickerItems = (items || []).filter((item) => isVisibleImageOutput(item));
@@ -822,10 +1323,10 @@ async function openArtworkPickerFolder(folderId) {
   renderArtworkPicker();
 }
 
-function artworkPickerImageButtons(items) {
+function artworkPickerImageButtons(items, offset = 0) {
   return items.map((item, index) => `
-    <button class="artwork-choice" type="button" data-use-artwork="${index}">
-      <img class="${item.blurred ? "is-blurred" : ""}" src="${item.url}" alt="">
+    <button class="artwork-choice" type="button" data-use-artwork="${offset + index}">
+      <img loading="lazy" class="${item.blurred ? "is-blurred" : ""}" src="${escapeAttr(previewUrl(item))}" alt="">
       <span>${escapeHtml(item.title || item.app_name || "画册图片")}</span>
     </button>
   `).join("");
@@ -837,7 +1338,7 @@ function renderArtworkPosePicker(target) {
   target.className = "artwork-picker-pose";
   target.innerHTML = `
     <div class="pose-path-bar">
-      <button type="button" data-picker-pose-path="">POSE</button>
+      <button type="button" data-picker-pose-path="">${escapeHtml(HuashiRooms.directoryLibrary(state.artworkPickerAlbumId).label)}</button>
       ${(data.breadcrumbs || []).map((crumb) => `
         <span>/</span>
         <button type="button" data-picker-pose-path="${escapeAttr(crumb.path)}">${escapeHtml(crumb.name)}</button>
@@ -855,29 +1356,69 @@ function renderArtworkPosePicker(target) {
       </div>
     ` : ""}
     ${items.length ? `<div class="artwork-picker-grid">${artworkPickerImageButtons(items)}</div>` : ""}
-    ${data.next_offset !== null ? `<button class="secondary-button pose-more-button" type="button" data-picker-pose-more="${Number(data.next_offset)}">加载更多（${items.length}/${Number(data.image_count || items.length)}）</button>` : ""}
-    ${!(data.directories || []).length && !items.length ? `<div class="empty-state">这个 POSE 文件夹没有图片</div>` : ""}
+    ${HuashiPages.markup(data.image_count || 0,state.artworkPickerPage,state.artworkPickerPageSize)}
+    ${!(data.directories || []).length && !items.length ? `<div class="empty-state">这个素材文件夹没有图片</div>` : ""}
   `;
   target.querySelectorAll("[data-picker-pose-path]").forEach((button) => {
     button.addEventListener("click", () => refreshArtworkPickerPose(button.dataset.pickerPosePath || "").then(renderArtworkPicker));
   });
-  target.querySelector("[data-picker-pose-more]")?.addEventListener("click", async (event) => {
-    const offset = Number(event.currentTarget.dataset.pickerPoseMore || 0);
-    const data = await api(`/api/pose?path=${encodeURIComponent(state.artworkPickerPosePath || "")}&offset=${offset}&limit=120`);
-    state.artworkPickerPoseData = { ...data, items: [...(state.artworkPickerPoseData?.items || []), ...(data.items || [])] };
-    state.artworkPickerItems = state.artworkPickerPoseData.items || [];
-    renderArtworkPicker();
-  });
+  HuashiPages.bind(target,async next=>{state.artworkPickerPage=next.page;state.artworkPickerPageSize=next.size;await refreshArtworkPickerPose(state.artworkPickerPosePath,false);renderArtworkPicker();});
   target.querySelectorAll("[data-use-artwork]").forEach((button) => {
     button.addEventListener("click", () => useArtwork(Number(button.dataset.useArtwork || 0)));
   });
 }
 
-async function refreshArtworkPickerPose(path) {
-  state.artworkPickerPosePath = path || "";
-  const data = await api(`/api/pose?path=${encodeURIComponent(state.artworkPickerPosePath)}&limit=120`);
-  state.artworkPickerPoseData = data;
-  state.artworkPickerItems = data.items || [];
+async function refreshArtworkPickerPose(path, reset = true) {
+  const request=++state.artworkPickerRequest;
+  state.artworkPickerPosePath=path || "";if(reset)state.artworkPickerPage=0;
+  const data=await api(`/api/pose?path=${encodeURIComponent(HuashiRooms.directoryPath(state.artworkPickerAlbumId, state.artworkPickerPosePath))}&offset=${state.artworkPickerPage*state.artworkPickerPageSize}&limit=${state.artworkPickerPageSize}`);
+  const items=await HuashiMaterialBag.withDirectoryThumbnails(data.items || []);
+  if(request!==state.artworkPickerRequest)return;
+  state.artworkPickerPoseData=HuashiRooms.directoryData(state.artworkPickerAlbumId,data);state.artworkPickerItems=items;
+}
+
+function renderArtworkFacePicker(target) {
+  const data = state.artworkPickerFaceData || { directories: [], items: [], breadcrumbs: [], next_offset: null, image_count: 0 };
+  const items = state.artworkPickerItems || [];
+  target.className = "artwork-picker-pose artwork-picker-face";
+  target.innerHTML = `
+    <div class="pose-path-bar">
+      <button type="button" data-picker-face-path="">人脸库</button>
+      ${(data.breadcrumbs || []).map((crumb) => `
+        <span>/</span>
+        <button type="button" data-picker-face-path="${escapeAttr(crumb.path)}">${escapeHtml(crumb.name)}</button>
+      `).join("")}
+    </div>
+    ${(data.directories || []).length ? `
+      <div class="album-folder-grid pose-folder-grid">
+        ${data.directories.map((folder) => `
+          <button class="album-folder-card pose-folder-card" type="button" data-picker-face-path="${escapeAttr(folder.path)}">
+            <span class="folder-shape" aria-hidden="true"></span>
+            <strong>${escapeHtml(folder.name)}</strong>
+            <small>文件夹</small>
+          </button>
+        `).join("")}
+      </div>
+    ` : ""}
+    ${items.length ? `<div class="artwork-picker-grid">${artworkPickerImageButtons(items)}</div>` : ""}
+    ${HuashiPages.markup(data.image_count || 0,state.artworkPickerPage,state.artworkPickerPageSize)}
+    ${!(data.directories || []).length && !items.length ? `<div class="empty-state">这个人脸库文件夹没有图片</div>` : ""}
+  `;
+  target.querySelectorAll("[data-picker-face-path]").forEach((button) => {
+    button.addEventListener("click", () => refreshArtworkPickerFace(button.dataset.pickerFacePath || "").then(renderArtworkPicker));
+  });
+  HuashiPages.bind(target,async next=>{state.artworkPickerPage=next.page;state.artworkPickerPageSize=next.size;await refreshArtworkPickerFace(state.artworkPickerFacePath,false);renderArtworkPicker();});
+  target.querySelectorAll("[data-use-artwork]").forEach((button) => {
+    button.addEventListener("click", () => useArtwork(Number(button.dataset.useArtwork || 0)));
+  });
+}
+
+async function refreshArtworkPickerFace(path, reset = true) {
+  const request=++state.artworkPickerRequest;
+  state.artworkPickerFacePath=path || "";if(reset)state.artworkPickerPage=0;
+  const data=await api(`/api/faces?path=${encodeURIComponent(state.artworkPickerFacePath)}&offset=${state.artworkPickerPage*state.artworkPickerPageSize}&limit=${state.artworkPickerPageSize}`);
+  if(request!==state.artworkPickerRequest)return;
+  state.artworkPickerFaceData=data;state.artworkPickerItems=data.items || [];
 }
 
 function useArtwork(index) {
@@ -892,6 +1433,7 @@ function useArtwork(index) {
   const form = $("createTaskForm");
   const artworkInput = form.querySelector(`[name="${CSS.escape(`input_${key}_artwork`)}"]`);
   if (artworkInput) artworkInput.value = item.path || "";
+  showInputPreview(key, item.thumb_url || item.url);
   form.querySelectorAll(`[data-file-input="${CSS.escape(key)}"]`).forEach((input) => {
     input.value = "";
   });
@@ -902,18 +1444,57 @@ function useArtwork(index) {
 }
 
 function renderPrompts() {
+  $("promptHubPanel")?.classList.toggle("hidden", Boolean(state.promptSection));
+  $("promptToolHint").hidden = true;
+  $("promptToolHint").textContent = state.promptTool === "rewrite" ? "选择一条提示词，点击「AI 改写」继续。" : "选择一条提示词，点击「翻译」继续。";
+  $("promptLibraryPanel")?.classList.toggle("hidden", state.promptSection !== "library");
   const target = $("promptList");
   if (!target) return;
+  renderPromptDirectories();
+  if (state.promptFolderError || !state.promptFolderId) {
+    target.innerHTML = `<div class="empty-state">${escapeHtml(state.promptFolderError || "正在读取目录…")}</div>`;
+    return;
+  }
   const prompts = filteredPrompts();
+  const page=HuashiPages.windowFor(prompts.length,state.promptPage,state.promptPageSize);state.promptPage=page.page;
+  $("promptPagination").innerHTML=HuashiPages.markup(prompts.length,page.page,page.size);
+  HuashiPages.bind($("promptPagination"),next=>{state.promptPage=next.page;state.promptPageSize=next.size;renderPrompts();});
+  const visibleIds = new Set(prompts.map(prompt => prompt.id));
+  state.promptSelected = new Set([...state.promptSelected].filter(id => visibleIds.has(id)));
+  renderPromptSelection();
   target.innerHTML = prompts.length
-    ? prompts.map((prompt) => promptCard(prompt, { mode: "manage" })).join("")
-    : `<div class="empty-state">还没有保存提示词</div>`;
+    ? prompts.slice(page.start,page.end).map((prompt) => promptCard(prompt, { mode: "manage", presentation: "grid" })).join("")
+    : `<div class="empty-state">${state.promptSearch ? "当前搜索没有匹配结果" : "这个目录还没有提示词，可点击「新建」保存"}</div>`;
   bindPromptListActions(target);
+  ensurePromptImages().bind(target);
+}
+
+let personalImages=null,personalDetailReturn=null;
+function ensurePromptImages(){return personalImages??=HuashiInspirationImages.create({loadEntry:(id,options)=>api('/api/inspiration/v2/entry?id='+encodeURIComponent(id),options),imageURL:u=>typeof u==='string'&&u.startsWith('/')&&!u.startsWith('//')?u:''})}
+function closePromptDetail(){const d=$('inspirationDetail');if(d?.dataset.owner==='personal'){HuashiInspirationDetail.release(d);if(d.open)d.close();delete d.dataset.owner;personalImages?.close();personalDetailReturn?.isConnected&&personalDetailReturn.focus({preventScroll:true});}}
+function releasePromptPresentation(){closePromptDetail();personalImages?.destroy();personalImages=null;}
+async function togglePersonalPromptFavorite(id){
+  const p=state.prompts.find(x=>x.id===id);if(!p)throw new Error('提示词暂不可用，请刷新后重试');
+  const next=!p.favorite;await api('/api/prompts/'+encodeURIComponent(id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:p.title,content:p.content,tags:p.tags,note:p.note,sample_path:p.sample_path,favorite:next,app_ids:(p.apps||[]).map(a=>a.id)})});
+  p.favorite=next;renderPrompts();return next;
+}
+function openPromptDetail(id){
+  const p=state.prompts.find(x=>x.id===id);if(!p)return;
+  const d=$('inspirationDetail');ensurePromptImages().hidePreview();if(!d.open)personalDetailReturn=document.activeElement;d.dataset.owner='personal';
+  const scratch=document.createElement('div');scratch.innerHTML=promptCard(p,{mode:'manage'});
+  const variants=scratch.querySelector('.variant-list')?.outerHTML||'';
+  HuashiInspirationDetail.show(d,{id:'prompt:'+p.id,domain:'prompt',kind:'prompt',title:p.title,image:p.sample_url||'',thumbnail:p.sample_url?previewUrl(p):'',category:p.folder_path||'我的提示词',folder_path:p.folder_path,description:p.note||'',tags:p.tags,variants:p.variants,prompts:{original:p.content},source_urls:[]},{
+    images:ensurePromptImages(),copy:copyText,toast:showToast,close:closePromptDetail,favorite:p.favorite,toggleFavorite:()=>togglePersonalPromptFavorite(p.id),
+    managePrompt:()=>editPrompt(p.id),extraHTML:variants,
+    extraActions:`<button class="button" type="button" data-move-prompt="${escapeAttr(p.id)}">移动目录</button><button class="button" type="button" data-agent-prompt="${escapeAttr(p.id)}">局部修改</button><button class="button danger" type="button" data-delete-prompt="${escapeAttr(p.id)}">删除</button>`,
+    bindExtra:root=>{bindPromptListActions(root);root.querySelectorAll('[data-move-prompt],[data-agent-prompt],[data-delete-prompt]').forEach(button=>button.addEventListener('click',closePromptDetail,{capture:true}));},
+  });
 }
 
 function filteredPrompts(source = state.prompts, query = state.promptSearch) {
   const text = String(query || "").trim().toLowerCase();
-  return source.filter((prompt) => {
+  if (!state.promptFolderId || state.promptFolderError) return [];
+  return HuashiPromptFolders.filterPrompts(source, state.promptFolderId, state.promptAllDirectories).filter((prompt) => {
     if (!text) return true;
     const variantText = (prompt.variants || []).map((variant) => `${variant.title} ${variant.content} ${variant.translation} ${variant.edit_idea}`).join(" ");
     const haystack = `${prompt.title} ${prompt.content} ${variantText} ${(prompt.tags || []).join(" ")} ${(prompt.apps || []).map((app) => app.name).join(" ")}`.toLowerCase();
@@ -921,30 +1502,82 @@ function filteredPrompts(source = state.prompts, query = state.promptSearch) {
   });
 }
 
+function changePromptDirectory(folderId) {
+  if (folderId === state.promptFolderId) return;
+  state.promptFolderId = folderId;
+  state.promptPage = 0;
+  state.promptSelected.clear();
+  state.promptAllDirectories = false;
+  $("promptSearchAll").checked = false;
+  HuashiPromptFolders.remember(folderId);
+  if (window.matchMedia("(max-width:760px)").matches) $("promptDirectoryPanel").open = false;
+  renderPrompts();
+}
+
+function renderPromptDirectories() {
+  const directoryData = HuashiPromptFolders.snapshot();
+  const current = directoryData?.folders.find(folder => folder.id === state.promptFolderId);
+  $("promptDirectoryPath").textContent = state.promptFolderError ? `目录读取失败：${state.promptFolderError}` : current?.path || current?.name || "正在读取目录…";
+  $("promptDirectoryCount").textContent = current ? `${Number(current.count || 0)} 条${state.promptAllDirectories ? " · 搜索全部目录" : ""}` : "";
+  $("promptDirectoryRetry").hidden = !state.promptFolderError;
+  $("newPromptButton").disabled = !current;
+  HuashiPromptFolders.mountTree($("promptDirectoryTree"), {api,value:state.promptFolderId,onChange:changePromptDirectory,onMutate:loadData,toast:showToast});
+}
+
+function renderPromptSelection() {
+  const count = state.promptSelected.size;
+  $("promptSelectMode").textContent = state.promptSelecting ? "结束选择" : "选择";
+  $("promptSelectVisible").hidden = !state.promptSelecting;
+  $("promptMoveSelected").hidden = !state.promptSelecting;
+  $("promptMoveSelected").disabled = !count;
+  $("promptSelectionCount").textContent = count ? `已选 ${count} 条` : "";
+}
+
+function movePromptIds(ids) {
+  HuashiPromptFolders.move(ids,{api,value:state.promptFolderId,toast:showToast,onMoved:async () => {state.promptSelected.clear();await loadData();}});
+}
+
 function promptCard(prompt, options = {}) {
+  const grid = options.presentation === "grid";
+  if(grid)return HuashiInspirationPresentation.card({id:'prompt:'+prompt.id,domain:'prompt',title:prompt.title,thumbnail:prompt.sample_url?previewUrl(prompt):'',description:prompt.note,content:prompt.content,tags:prompt.tags,variants:prompt.variants},{attributes:`data-prompt-detail="${escapeAttr(prompt.id)}"`,extraClass:'prompt-card prompt-grid-card',selection:state.promptSelecting?`<label class="reference-card-select"><input type="checkbox" aria-label="选择${escapeAttr(prompt.title)}" data-select-prompt="${escapeAttr(prompt.id)}" ${state.promptSelected.has(prompt.id)?'checked':''}>选择</label>`:''});
   const tags = (prompt.tags || []).slice(0, 4).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
   const variants = prompt.variants || [];
+  // Only the library changes presentation; pickers retain their existing controls.
+  const coverAction = grid ? `data-edit-prompt="${escapeAttr(prompt.id)}" aria-label="${escapeAttr(`查看和编辑：${prompt.title}`)}"` : `data-agent-prompt="${escapeAttr(prompt.id)}"`;
+  let excerpt = prompt.content;
+  if (grid) {
+    try {
+      const structured = JSON.parse(prompt.content);
+      if (typeof structured?.prompt === "string") excerpt = structured.prompt;
+    } catch { /* Plain text prompts keep their original excerpt. */ }
+  }
   const sample = prompt.sample_url
-    ? `<button class="prompt-sample" type="button" data-agent-prompt="${prompt.id}"><img loading="lazy" src="${prompt.sample_url}" alt=""></button>`
-    : `<button class="prompt-sample empty" type="button" data-agent-prompt="${prompt.id}">提示词</button>`;
+    ? `<button class="prompt-sample${grid ? " inspiration-card-cover" : ""}" type="button" ${coverAction}><img loading="lazy" src="${escapeAttr(previewUrl(prompt))}" alt=""></button>`
+    : `<button class="prompt-sample empty${grid ? " inspiration-card-cover inspiration-text-cover" : ""}" type="button" ${coverAction}>${grid ? `<span class="prompt-paper-label">文字提示词</span><span class="prompt-paper-title">${escapeHtml(prompt.title)}</span><span class="prompt-paper-rule" aria-hidden="true"></span>` : "提示词"}</button>`;
   const pickButton = options.mode === "picker"
     ? `<button class="tiny-button" type="button" data-use-prompt="${prompt.id}">使用</button>`
     : "";
   const manageButtons = options.mode === "manage"
     ? `
-      <button class="tiny-button" type="button" data-agent-prompt="${prompt.id}">智能拆解</button>
+      <button class="tiny-button" type="button" data-copy-prompt="${prompt.id}">复制</button>
+      ${grid ? `<button class="tiny-button" type="button" data-edit-prompt="${escapeAttr(prompt.id)}">查看 / 编辑</button>` : ""}
+      <details class="prompt-row-menu"><summary>更多</summary><div>
+      <button class="tiny-button" type="button" data-agent-prompt="${prompt.id}">局部修改</button>
       <button class="tiny-button" type="button" data-edit-prompt="${prompt.id}">编辑</button>
+      <button class="tiny-button" type="button" data-move-prompt="${escapeAttr(prompt.id)}">移动目录</button>
       <button class="tiny-button danger" type="button" data-delete-prompt="${prompt.id}">删除</button>
+      </div></details>
     `
     : "";
   return `
-    <article class="prompt-card">
+    <article class="prompt-card${grid ? " prompt-grid-card inspiration-card" : ""}">
       ${sample}
-      <div class="prompt-card-main">
-        <strong>${escapeHtml(prompt.title)}</strong>
-        <p>${escapeHtml(prompt.content)}</p>
-        <small>使用 ${Number(prompt.use_count || 0)} 次${variants.length ? ` · ${variants.length} 个衍生` : ""}</small>
-        ${tags ? `<div class="tag-row">${tags}</div>` : ""}
+      <div class="prompt-card-main${grid ? " inspiration-card-body" : ""}">
+        ${grid ? `<small class="inspiration-card-meta">提示词 · ${escapeHtml(prompt.folder_path || "我的提示词")}${prompt.favorite ? " · 常用" : ""}</small>` : ""}
+        <strong class="${grid ? "inspiration-card-title" : ""}"><button class="prompt-open-text" type="button" data-edit-prompt="${prompt.id}" title="查看和编辑提示词">${escapeHtml(prompt.title)}</button></strong>
+        <p class="${grid ? "inspiration-card-summary" : ""}" title="${escapeAttr(prompt.content)}">${escapeHtml(excerpt)}</p>
+        <small>使用 ${Number(prompt.use_count || 0)} 次${variants.length ? ` · ${variants.length} 个衍生` : ""}${state.promptAllDirectories ? ` · ${escapeHtml(prompt.folder_path || "目录待确认")}` : ""}</small>
+        ${tags ? `<div class="tag-row${grid ? " inspiration-card-tags" : ""}">${tags}</div>` : ""}
         ${variants.length ? `
           <details class="variant-list">
             <summary>查看 AI 衍生提示词</summary>
@@ -979,7 +1612,8 @@ function promptCard(prompt, options = {}) {
           </details>
         ` : ""}
       </div>
-      <div class="prompt-card-actions">
+      <div class="prompt-card-actions${grid ? " inspiration-card-actions" : ""}">
+        ${options.mode === "manage" && state.promptSelecting ? `<label class="prompt-folder-row-check"><input type="checkbox" aria-label="选择${escapeAttr(prompt.title)}" data-select-prompt="${escapeAttr(prompt.id)}" ${state.promptSelected.has(prompt.id) ? "checked" : ""}>选择</label>` : ""}
         ${prompt.favorite ? `<span class="star-mark">常用</span>` : ""}
         ${pickButton}
         ${manageButtons}
@@ -989,6 +1623,27 @@ function promptCard(prompt, options = {}) {
 }
 
 function bindPromptListActions(root) {
+  root.querySelectorAll('[data-prompt-detail]').forEach(button=>button.onclick=()=>openPromptDetail(button.dataset.promptDetail));
+  root.querySelectorAll("[data-select-prompt]").forEach(input => input.onchange = () => {
+    if (input.checked) state.promptSelected.add(input.dataset.selectPrompt); else state.promptSelected.delete(input.dataset.selectPrompt);
+    renderPromptSelection();
+  });
+  root.querySelectorAll("[data-move-prompt]").forEach(button => button.onclick = () => movePromptIds([button.dataset.movePrompt]));
+  root.querySelectorAll("[data-rewrite-prompt]").forEach((button) => {
+    button.addEventListener("click", () => openRewriteDrawer(button.dataset.rewritePrompt));
+  });
+  root.querySelectorAll("[data-translate-prompt]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const prompt = state.prompts.find((item) => item.id === button.dataset.translatePrompt);
+      if (!prompt) return;
+      openRewriteDrawer(prompt.id);
+      $("rewriteDrawer").dataset.mode = "translate";
+      $("rewriteDrawerTitle").textContent = "翻译提示词";
+      state.rewriteCandidates = [prompt.content];
+      renderRewriteResults(state.rewriteCandidates);
+      setRewriteStatus("选择模型后，点击原文下的「翻译」。");
+    });
+  });
   root.querySelectorAll("[data-edit-prompt]").forEach((button) => {
     button.addEventListener("click", () => editPrompt(button.dataset.editPrompt));
   });
@@ -1001,11 +1656,13 @@ function bindPromptListActions(root) {
   root.querySelectorAll("[data-use-variant]").forEach((button) => {
     button.addEventListener("click", () => usePromptVariant(button.dataset.useVariant));
   });
+  root.querySelectorAll("[data-copy-prompt]").forEach((button) => {
+    button.addEventListener("click", () => copyPrompt(button.dataset.copyPrompt, button));
+  });
   root.querySelectorAll("[data-copy-variant]").forEach((button) => {
     button.addEventListener("click", async () => {
       const variant = findPromptVariant(button.dataset.copyVariant)?.variant;
-      await navigator.clipboard.writeText(variant?.content || "");
-      button.textContent = "已复制";
+      await copyText(variant?.content || "", button);
     });
   });
   root.querySelectorAll("[data-delete-variant]").forEach((button) => {
@@ -1016,19 +1673,41 @@ function bindPromptListActions(root) {
   });
 }
 
+async function copyPrompt(promptId, button = null) {
+  const prompt = state.prompts.find((item) => item.id === promptId);
+  await copyText(prompt?.content || "", button);
+}
+
 function openPromptForm(prompt = null) {
   $("promptForm").classList.remove("hidden");
   $("promptIdInput").value = prompt?.id || "";
   $("promptTitleInput").value = prompt?.title || "";
   $("promptContentInput").value = prompt?.content || "";
+  $("promptOptionalFields").open=Boolean(prompt?.sample_path || prompt?.note || prompt?.tags?.length || prompt?.favorite);
   $("promptTagsInput").value = (prompt?.tags || []).join(", ");
   $("promptFavoriteInput").checked = Boolean(prompt?.favorite);
   $("promptNoteInput").value = prompt?.note || "";
   setPromptSample(prompt?.sample_path || "", prompt?.sample_url || "");
-  $("promptContentInput").focus();
+  const submit = $("promptForm").querySelector('[type="submit"]'); submit.disabled = true;
+  state.promptDraftFolderInitial = null;
+  state.promptFormFolderControl = HuashiPromptFolders.mountSelector($("promptFormFolder"), {api,value:prompt?.folder_id || state.promptFolderId,onReady:id => {submit.disabled = !id; if (state.promptDraftFolderInitial === null) state.promptDraftFolderInitial = id;}});
+  if(!$("promptEditorDialog").open)$("promptEditorDialog").showModal();
+  state.promptDraftBaseline = promptDraftFingerprint();
+  $("promptTitleInput").focus();
 }
 
-function closePromptForm() {
+function promptDraftFingerprint() {
+  return JSON.stringify([$("promptTitleInput").value,$("promptContentInput").value,$("promptTagsInput").value,$("promptFavoriteInput").checked,$("promptNoteInput").value,$("promptSamplePathInput").value]);
+}
+
+function closePromptForm(discard = false) {
+  if (discard !== true && state.promptDraftBaseline && (promptDraftFingerprint() !== state.promptDraftBaseline || (state.promptDraftFolderInitial !== null && state.promptFormFolderControl?.value !== state.promptDraftFolderInitial))) {
+    if (!$("promptDiscardDialog").open) $("promptDiscardDialog").showModal();
+    return;
+  }
+  state.promptDraftBaseline = "";
+  if($("promptEditorDialog").open)$("promptEditorDialog").close();
+  state.promptFormFolderControl?.destroy(); state.promptFormFolderControl = null;
   $("promptForm").classList.add("hidden");
   $("promptForm").reset();
   $("promptIdInput").value = "";
@@ -1036,6 +1715,7 @@ function closePromptForm() {
 }
 
 function editPrompt(promptId) {
+  closePromptDetail();
   const prompt = state.prompts.find((item) => item.id === promptId);
   if (prompt) openPromptForm(prompt);
 }
@@ -1051,7 +1731,10 @@ async function deletePrompt(promptId) {
 }
 
 function promptFormPayload() {
+  const folderId = state.promptFormFolderControl?.value;
+  if (!folderId) throw new Error("请先选择可用的保存目录");
   return {
+    folder_id: folderId,
     title: $("promptTitleInput").value.trim(),
     content: $("promptContentInput").value.trim(),
     tags: $("promptTagsInput").value.trim(),
@@ -1062,7 +1745,22 @@ function promptFormPayload() {
   };
 }
 
+async function uploadPromptSample(input) {
+  const file=input.files?.[0];if(!file)return;
+  const request=++state.promptSampleRequest;
+  const submit=$('promptForm').querySelector('[type="submit"]');submit.disabled=true;input.disabled=true;
+  const form=new FormData();form.append('image',file);
+  try {
+    const {item}=await api('/api/albums/upload',{method:'POST',body:form});
+    if(request===state.promptSampleRequest && !$('promptForm').classList.contains('hidden'))setPromptSample(item.path,item.url);
+    const {folders}=await api('/api/albums');state.albums=folders;
+    showToast('配图已上传到待整理','info');
+  }catch(error){showToast(error.message,'error');}
+  finally{input.value='';input.disabled=false;submit.disabled=!state.promptFormFolderControl?.value;}
+}
+
 function setPromptSample(path, url = "") {
+  ++state.promptSampleRequest;
   $("promptSamplePathInput").value = path || "";
   const preview = $("promptSamplePreview");
   if (!path) {
@@ -1076,33 +1774,47 @@ function setPromptSample(path, url = "") {
 function openPromptPicker(inputId) {
   state.selectedPromptField = inputId;
   state.pickerSearch = "";
-  $("pickerSearchInput").value = "";
-  $("promptPicker").classList.remove("hidden");
-  $("promptPicker").setAttribute("aria-hidden", "false");
+  $('promptPicker').classList.remove('hidden');
+  $('promptPicker').setAttribute('aria-hidden', 'false');
   renderPromptPicker();
+  $('pickerSearchInput').focus();
 }
 
 function closePromptPicker() {
-  $("promptPicker").classList.add("hidden");
-  $("promptPicker").setAttribute("aria-hidden", "true");
-  state.selectedPromptField = "";
+  $('pickerPromptList').roomSearch?.destroy();
+  $('promptPicker').classList.add('hidden');
+  $('promptPicker').setAttribute('aria-hidden', 'true');
+  state.selectedPromptField = '';
 }
 
 function renderPromptPicker() {
-  const ordered = [...state.prompts].sort((a, b) => {
-    if (Boolean(b.favorite) !== Boolean(a.favorite)) return Number(b.favorite) - Number(a.favorite);
-    return String(b.last_used_at || b.updated_at || "").localeCompare(String(a.last_used_at || a.updated_at || ""));
-  });
-  const prompts = filteredPrompts(ordered, state.pickerSearch);
-  $("pickerPromptList").innerHTML = prompts.length
-    ? prompts.map((prompt) => promptCard(prompt, { mode: "picker" })).join("")
-    : `<div class="empty-state">没有匹配的提示词</div>`;
-  bindPromptListActions($("pickerPromptList"));
+  if ($('promptPicker').classList.contains('hidden')) return;
+  HuashiSearch.mount($('pickerPromptList'), {api, copy:copyText, picker:true, usePrompt(content, {mode="replace"}={}) {
+    const key=state.selectedPromptField;
+    if (key==='portraitBasePrompt') usePortraitBasePrompt(HuashiCreation.mergePrompt(state.portraitBasePrompt || "",content,mode));
+    else {
+      const field=$('createTaskForm').querySelector(`[name="${CSS.escape(`input_${key}`)}"]`);
+      if (!field) {showToast('当前画布没有这个提示词字段','error');return;}
+      field.value=HuashiCreation.mergePrompt(field.value,field.tagName==='INPUT' ? content.replace(/\r?\n/g," ") : content,mode,field.tagName==='INPUT' ? " " : "\n\n");field.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    closePromptPicker();showToast(mode==='append'?'已追加到提示词':'已替换提示词','info');
+  }}, {query:state.pickerSearch,kind:'prompt',offset:0});
 }
 
 async function usePrompt(promptId) {
   const prompt = state.prompts.find((item) => item.id === promptId);
   if (!prompt || !state.selectedPromptField) return;
+  if (state.selectedPromptField === "portraitBasePrompt") {
+    usePortraitBasePrompt(prompt.content || "");
+    closePromptPicker();
+    try {
+      const { prompt: updated } = await api(`/api/prompts/${promptId}/use`, { method: "POST" });
+      state.prompts = state.prompts.map((item) => item.id === updated.id ? updated : item);
+    } catch (_error) {
+      // 使用成功比计数更重要，计数失败不打断生成流程。
+    }
+    return;
+  }
   const field = $("createTaskForm").querySelector(`[name="${CSS.escape(`input_${state.selectedPromptField}`)}"]`);
   if (field) {
     field.value = prompt.content;
@@ -1120,6 +1832,17 @@ async function usePrompt(promptId) {
 async function usePromptVariant(variantId) {
   const found = findPromptVariant(variantId);
   if (!found || !state.selectedPromptField) return;
+  if (state.selectedPromptField === "portraitBasePrompt") {
+    usePortraitBasePrompt(found.variant.content || "");
+    closePromptPicker();
+    try {
+      const { prompt } = await api(`/api/prompt-variants/${variantId}/use`, { method: "POST" });
+      state.prompts = state.prompts.map((item) => item.id === prompt.id ? prompt : item);
+    } catch (_error) {
+      // 使用成功比计数更重要，计数失败不打断生成流程。
+    }
+    return;
+  }
   const field = $("createTaskForm").querySelector(`[name="${CSS.escape(`input_${state.selectedPromptField}`)}"]`);
   if (field) {
     field.value = found.variant.content;
@@ -1148,7 +1871,7 @@ async function deletePromptVariant(variantId) {
     const { prompt } = await api(`/api/prompt-variants/${variantId}`, { method: "DELETE" });
     state.prompts = state.prompts.map((item) => item.id === prompt.id ? prompt : item);
     renderPrompts();
-    if (!$("promptPicker").classList.contains("hidden")) renderPromptPicker();
+    // The shared search drawer keeps its query and selected kind during background updates.
   } catch (error) {
     setNotice(error.message, "error");
   }
@@ -1169,10 +1892,9 @@ function renderRewriteModels() {
 function renderAgentModels() {
   const input = $("agentModelInput");
   if (!input) return;
-  const hasAvailableGrok = state.promptModels.some((item) => item.id === "aihubmix-grok" && item.available);
   input.innerHTML = state.promptModels
     .map((model) => {
-      const selected = (hasAvailableGrok && model.id === "aihubmix-grok") || (!hasAvailableGrok && model.default);
+      const selected = model.default;
       return `
         <option value="${escapeAttr(model.id)}" ${selected ? "selected" : ""} ${model.available ? "" : "disabled"}>
           ${escapeHtml(model.label)}${model.available ? "" : "（未配置）"}
@@ -1182,9 +1904,1366 @@ function renderAgentModels() {
     .join("");
 }
 
+async function ensurePortraitData() {
+  if(window.HuashiMaterialBag){HuashiMaterialBag.mount();return;}
+  if (state.portraitLoading) return;
+  state.portraitLoading = true;
+  setPortraitStatus("正在读取素材库...");
+  try {
+    if (!state.portraitSlots.length) {
+      const { slots } = await api("/api/portrait/slots");
+      state.portraitSlots = slots || [];
+    }
+    if (!state.portraitCatalogItems.length) await loadPortraitCatalog();
+    await loadPortraitMaterials(true);
+    setPortraitStatus("");
+  } catch (error) {
+    setPortraitStatus(error.message, "error");
+  } finally {
+    state.portraitLoading = false;
+    renderPortrait();
+  }
+}
+
+async function loadPortraitCatalog() {
+  const cached = readPortraitCatalogCache();
+  if (cached) {
+    state.portraitCatalogItems = cached.items || [];
+    state.portraitCategories = cached.categories || [];
+    return;
+  }
+  const items = [];
+  let offset = 0;
+  let categories = [];
+  while (offset !== null) {
+    const result = await api(`/api/portrait/materials?limit=160&offset=${offset}`);
+    items.push(...(result.items || []));
+    categories = result.categories || categories;
+    offset = result.next_offset;
+  }
+  state.portraitCatalogItems = items;
+  state.portraitCategories = categories;
+  writePortraitCatalogCache({ items, categories });
+}
+
+async function loadPortraitMaterials(reset = false) {
+  const step = currentPortraitStep();
+  if (step?.final) {
+    state.portraitMaterials = [];
+    state.portraitNextOffset = null;
+    return;
+  }
+  if(reset)state.portraitPage=0;
+  const allItems=filteredPortraitStepItems(step),w=HuashiPages.windowFor(allItems.length,state.portraitPage,state.portraitPageSize);
+  state.portraitPage=w.page;state.portraitMaterials=allItems.slice(w.start,w.end);
+  state.portraitNextOffset=null;
+}
+
+function readPortraitCatalogCache() {
+  try {
+    const raw = window.localStorage?.getItem(PORTRAIT_CATALOG_CACHE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || Date.now() - Number(data.savedAt || 0) > PORTRAIT_CATALOG_CACHE_TTL_MS) return null;
+    if (!Array.isArray(data.items) || !Array.isArray(data.categories)) return null;
+    return data;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function writePortraitCatalogCache(data) {
+  try {
+    window.localStorage?.setItem(PORTRAIT_CATALOG_CACHE_KEY, JSON.stringify({ ...data, savedAt: Date.now() }));
+  } catch (_error) {
+    // 本地缓存不可用时不影响正常使用。
+  }
+}
+
+function renderPortrait() {
+  if(window.HuashiMaterialBag){HuashiMaterialBag.mount();return;}
+  if (!$("portraitMaterialGrid")) return;
+  renderPortraitImport();
+  renderPortraitSlotEditor();
+  renderPortraitFlow();
+  renderPortraitStepHeader();
+  renderPortraitMaterials();
+  renderPortraitSummary();
+  renderPortraitModels();
+  renderPortraitResult();
+  $("portraitSelectedSummary").textContent = selectedPortraitCount() ? `${selectedPortraitCount()} 个素材` : "未选择";
+  $("portraitGenerateButton").disabled = !portraitCanGenerate() || state.portraitLoading;
+  $("portraitSlotDrawer").classList.toggle("hidden", !state.portraitDrawerOpen);
+  $("portraitSlotDrawer").setAttribute("aria-hidden", state.portraitDrawerOpen ? "false" : "true");
+}
+
+function renderPortraitImport() {
+  const body = $("portraitImportBody");
+  if (!body) return;
+  body.classList.toggle("hidden", !state.portraitImportOpen);
+  if ($("portraitImportToggleButton")) $("portraitImportToggleButton").textContent = state.portraitImportOpen ? "收起" : "展开";
+  if ($("portraitImportPromptInput") && $("portraitImportPromptInput") !== document.activeElement) {
+    $("portraitImportPromptInput").value = state.portraitImportPrompt || "";
+  }
+  const result = $("portraitImportResult");
+  if (!result) return;
+  if (!state.portraitImportAnalysis) {
+    result.classList.add("hidden");
+    result.innerHTML = "";
+    return;
+  }
+  result.classList.remove("hidden");
+  result.innerHTML = portraitImportResultHtml();
+  bindPortraitImportControls(result);
+}
+
+function portraitImportResultHtml() {
+  const analysis = state.portraitImportAnalysis || {};
+  const drafts = portraitImportSlotDrafts();
+  const filledCount = drafts.filter((draft) => draft.values.length).length;
+  const suggestionCount = drafts.reduce((sum, draft) => sum + draft.suggestions.length, 0);
+  return `
+    <div class="portrait-import-summary">
+      <div>
+        <strong>已填入 ${filledCount} 个槽位</strong>
+        <p>${escapeHtml(analysis.summary || "原提示词已作为融合底稿保留；可在下面的槽位编辑器里调整。")}</p>
+      </div>
+      <small>${suggestionCount ? `${suggestionCount} 个建议已进入下拉` : "可继续用素材补强"}</small>
+    </div>
+    <details class="portrait-import-locked">
+      <summary>查看原文翻译和默认保留项</summary>
+      ${analysis.translation_cn ? `<p><b>中文翻译：</b>${escapeHtml(analysis.translation_cn)}</p>` : ""}
+      ${(analysis.locked_context || []).length ? `<p><b>保留：</b>${escapeHtml((analysis.locked_context || []).join("、"))}</p>` : ""}
+      ${analysis.guide ? `<p><b>修改建议：</b>${escapeHtml(analysis.guide)}</p>` : ""}
+    </details>
+  `;
+}
+
+function portraitImportDraftHtml(draft, index) {
+  const value = draft.values.length ? draft.values.join("、") : "这个槽位还没有明确原值";
+  const suggestions = draft.suggestions.slice(0, 4);
+  return `
+    <article class="portrait-import-draft ${draft.values.length ? "" : "is-empty"}">
+      <div class="portrait-import-item-head">
+        <strong>${escapeHtml(draft.label)}</strong>
+        <span>${draft.values.length ? "已填入" : "可补强"}</span>
+      </div>
+      <p>${escapeHtml(value)}</p>
+      <div class="portrait-import-suggestions">
+        ${draft.values.length ? `<button type="button" data-portrait-import-apply-draft="${index}" data-portrait-import-value="${escapeAttr(draft.values.join("、"))}">用草稿</button>` : ""}
+        ${suggestions.map((suggestion) => `
+          <button type="button" data-portrait-import-apply-draft="${index}" data-portrait-import-value="${escapeAttr(suggestion)}">${escapeHtml(suggestion)}</button>
+        `).join("")}
+      </div>
+      <div class="portrait-import-item-actions">
+        ${draft.categoryName ? `<button class="tiny-button" type="button" data-portrait-import-focus-draft="${index}">去选${escapeHtml(draft.label)}素材</button>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+function bindPortraitImportControls(root) {
+  root.querySelectorAll("[data-portrait-import-apply-draft]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const draft = portraitImportSlotDrafts()[Number(button.dataset.portraitImportApplyDraft || 0)];
+      applyPortraitImportValue(portraitImportDraftItem(draft), button.dataset.portraitImportValue || draft?.values?.join("、") || "");
+    });
+  });
+  root.querySelectorAll("[data-portrait-import-focus-draft]").forEach((button) => {
+    button.addEventListener("click", () => focusPortraitImportDraft(Number(button.dataset.portraitImportFocusDraft || 0)));
+  });
+}
+
+function renderPortraitSlotEditor() {
+  const target = $("portraitSlotEditor");
+  if (!target) return;
+  const steps = portraitSteps().filter((step) => !step.final);
+  if (!steps.length) {
+    target.innerHTML = `<div class="empty-state compact-empty">素材槽位加载中</div>`;
+    return;
+  }
+  target.innerHTML = `
+    <div class="portrait-slot-editor-head">
+      <div>
+        <strong>槽位编辑</strong>
+        <p>先用文字下拉快速定方向；需要看图时再打开对应图库。</p>
+      </div>
+      <div class="portrait-slot-editor-actions">
+        <span>${selectedPortraitCount()} 个素材</span>
+        <button class="primary-button" type="button" data-portrait-inline-generate ${portraitCanGenerate() && !state.portraitLoading ? "" : "disabled"}>生成</button>
+      </div>
+    </div>
+    <div class="portrait-slot-rows">
+      ${steps.map((step, index) => portraitSlotEditorRow(step, index)).join("")}
+    </div>
+    <div class="portrait-slot-extra">
+      <label class="portrait-slot-wide-field">
+        <span>整体补充</span>
+        <textarea id="portraitGlobalIdeaInput" rows="2" placeholder="例如：整体更清冷，场景更高级，避免低俗和网红感">${escapeHtml(state.portraitManual.global || "")}</textarea>
+      </label>
+      <label class="portrait-slot-wide-field">
+        <span class="portrait-field-head">
+          融合成熟提示词（可选）
+          <button class="tiny-button" id="portraitChooseBasePromptButton" type="button">从提示词库选</button>
+        </span>
+        <textarea id="portraitBasePromptInput" rows="3" placeholder="粘贴一段成熟提示词；不填就是直接根据素材生成">${escapeHtml(state.portraitBasePrompt || "")}</textarea>
+      </label>
+    </div>
+  `;
+  target.querySelectorAll("[data-portrait-slot-select]").forEach((select) => {
+    select.addEventListener("change", async () => {
+      const step = portraitSteps().find((item) => item.id === select.dataset.portraitSlotSelect);
+      await selectPortraitSlotOption(step, select.value);
+    });
+  });
+  target.querySelectorAll("[data-portrait-slot-manual]").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      state.portraitManual[event.currentTarget.dataset.portraitSlotManual] = event.currentTarget.value;
+      syncPortraitInputs();
+    });
+  });
+  target.querySelectorAll("[data-portrait-slot-clear]").forEach((button) => {
+    button.addEventListener("click", () => clearPortraitStepSelection(button.dataset.portraitSlotClear));
+  });
+  target.querySelectorAll("[data-portrait-editor-step]").forEach((button) => {
+    button.addEventListener("click", () => goPortraitStep(Number(button.dataset.portraitEditorStep || 0)));
+  });
+  target.querySelector("[data-portrait-inline-generate]")?.addEventListener("click", generatePortraitPrompt);
+  $("portraitGlobalIdeaInput")?.addEventListener("input", syncPortraitGlobalIdea);
+  $("portraitBasePromptInput")?.addEventListener("input", syncPortraitBasePrompt);
+  $("portraitChooseBasePromptButton")?.addEventListener("click", () => openPromptPicker("portraitBasePrompt"));
+}
+
+function portraitSlotEditorRow(step, index) {
+  const manualKey = stepManualKey(step);
+  const selected = portraitSelectedItemsForCategory(step.category?.name);
+  const value = selected.length === 1 ? `material:${selected[0].id}` : (selected.length > 1 ? "__mixed__" : "");
+  const active = index === state.portraitStepIndex ? "active" : "";
+  const mode = portraitStepSelectionMode(step) === "multi" ? "可多选" : "单选";
+  return `
+    <article class="portrait-slot-row ${active}">
+      <button class="portrait-slot-jump" type="button" data-portrait-editor-step="${index}">
+        <span>${index + 1}</span>
+        <strong>${escapeHtml(step.title)}</strong>
+        <small>${mode}</small>
+      </button>
+      <select data-portrait-slot-select="${escapeAttr(step.id)}" aria-label="${escapeAttr(step.title)}">
+        ${portraitSlotOptionsHtml(step, value)}
+      </select>
+      <input data-portrait-slot-manual="${escapeAttr(manualKey)}" value="${escapeAttr(state.portraitManual[manualKey] || "")}" placeholder="手写补充" />
+      <button class="tiny-button" type="button" data-portrait-slot-clear="${escapeAttr(step.category?.name || "")}">清空</button>
+    </article>
+  `;
+}
+
+function portraitSlotOptionsHtml(step, selectedValue) {
+  const options = new Map();
+  options.set("", "未选择");
+  if (selectedValue === "__mixed__") options.set("__mixed__", "已选多项，继续添加或清空");
+  portraitSelectedItemsForCategory(step.category?.name).forEach((item) => options.set(`material:${item.id}`, item.title_cn || "已选素材"));
+  portraitDraftsForCategory(step.category?.name).forEach((draft) => {
+    [...draft.values, ...draft.suggestions].slice(0, 8).forEach((text) => options.set(`manual:${text}`, `建议：${text}`));
+  });
+  portraitItemsForCategory(step.category?.name).slice(0, 220).forEach((item) => {
+    const prefix = item.slot && item.slot !== cleanPortraitCategoryName(step.category?.name) ? `${item.slot} · ` : "";
+    options.set(`material:${item.id}`, `${prefix}${item.title_cn || item.title_en || "素材"}`);
+  });
+  return [...options.entries()].map(([value, label]) => `
+    <option value="${escapeAttr(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(label)}</option>
+  `).join("");
+}
+
+function portraitItemsForCategory(categoryName) {
+  return (state.portraitCatalogItems || []).filter((item) => item.category === categoryName);
+}
+
+function portraitSelectedItemsForCategory(categoryName) {
+  return Object.values(state.portraitSelected)
+    .flat()
+    .filter((item) => item.category === categoryName);
+}
+
+function portraitDraftsForCategory(categoryName) {
+  return portraitImportSlotDrafts().filter((draft) => draft.categoryName === categoryName);
+}
+
+function portraitStepSelectionMode(step) {
+  const name = String(step?.category?.name || "");
+  if (name.startsWith("06_") || name.startsWith("07_") || name.startsWith("09_")) return "multi";
+  return "single";
+}
+
+function portraitStepAutoAdvance(step) {
+  return portraitStepSelectionMode(step) === "single";
+}
+
+async function selectPortraitSlotOption(step, value) {
+  if (!step) return;
+  if (!value) {
+    clearPortraitStepSelection(step.category?.name);
+    return;
+  }
+  if (value === "__mixed__") return;
+  if (value.startsWith("manual:")) {
+    state.portraitManual[stepManualKey(step)] = value.slice("manual:".length);
+    renderPortrait();
+    syncPortraitInputs();
+    return;
+  }
+  if (!value.startsWith("material:")) return;
+  const item = (state.portraitCatalogItems || []).find((entry) => entry.id === value.slice("material:".length));
+  if (!item) return;
+  addPortraitMaterial(item, { replaceCategory: portraitStepSelectionMode(step) === "single" });
+  renderTitle();
+  renderPortrait();
+}
+
+function clearPortraitStepSelection(categoryName) {
+  if (!categoryName) return;
+  removePortraitMaterialsByCategory(categoryName);
+  state.portraitManual[`category:${categoryName}`] = "";
+  renderPortrait();
+  syncPortraitInputs();
+}
+
+function renderPortraitFlow() {
+  const steps = portraitSteps();
+  const current = currentPortraitStep();
+  if ($("portraitFlowProgress")) $("portraitFlowProgress").textContent = steps.length ? `第 ${state.portraitStepIndex + 1}/${steps.length} 步` : "读取中";
+  if ($("portraitStepList")) {
+    $("portraitStepList").innerHTML = steps.length
+      ? steps.map((step, index) => `
+        <button class="portrait-step-item ${index === state.portraitStepIndex ? "active" : ""} ${portraitStepDone(step) ? "done" : ""}" type="button" data-portrait-step="${index}">
+          <span>${index + 1}</span>
+          <strong>${escapeHtml(step.title)}</strong>
+          <small>${escapeHtml(portraitStepSubtitle(step))}</small>
+        </button>
+      `).join("")
+      : `<div class="empty-state compact-empty">正在读取素材目录</div>`;
+    $("portraitStepList").querySelectorAll("[data-portrait-step]").forEach((button) => {
+      button.addEventListener("click", () => goPortraitStep(Number(button.dataset.portraitStep || 0)));
+    });
+  }
+  if ($("portraitSearchInput")) $("portraitSearchInput").value = state.portraitQuery;
+  if ($("portraitMobileSearchInput")) $("portraitMobileSearchInput").value = state.portraitQuery;
+  if ($("portraitPrevStepButton")) $("portraitPrevStepButton").disabled = state.portraitStepIndex <= 0 || state.portraitLoading;
+  if ($("portraitNextStepButton")) $("portraitNextStepButton").textContent = current?.final ? "回到开头" : "下一步";
+}
+
+function renderPortraitStepHeader() {
+  const step = currentPortraitStep();
+  if (!step) {
+    $("portraitStepKicker").textContent = "素材选择";
+    $("portraitStepTitle").textContent = "读取素材中";
+    $("portraitStepHint").textContent = "素材库加载后会自动进入第一步。";
+    $("portraitStepManualBox").innerHTML = "";
+    return;
+  }
+  $("portraitStepKicker").textContent = step.final ? "最后补充" : portraitStepCountLabel(step);
+  $("portraitStepTitle").textContent = step.title;
+  $("portraitStepHint").textContent = step.final
+    ? "这里可以直接生成，也可以粘贴成熟提示词，让 AI 把你的素材需求融进去。"
+    : "先看配图和提示片段，点“查看图片”看完整素材；单选目录选中后自动进入下一步。";
+  if (step.final) {
+    $("portraitStepManualBox").innerHTML = `
+      <div class="portrait-final-box">
+        <label class="field-block">
+          <span>最后补充</span>
+          <textarea id="portraitStepGlobalInput" rows="3" placeholder="例如：整体更清冷，像高级商业杂志封面">${escapeHtml(state.portraitManual.global || "")}</textarea>
+        </label>
+        <label class="field-block">
+          <span class="portrait-field-head">
+            融合成熟提示词（可选）
+            <button class="tiny-button" type="button" data-portrait-base-prompt-picker>从提示词库选</button>
+          </span>
+          <textarea id="portraitStepBasePromptInput" rows="5" placeholder="粘贴一段成熟提示词；不填就是直接根据素材生成">${escapeHtml(state.portraitBasePrompt || "")}</textarea>
+        </label>
+      </div>
+    `;
+    $("portraitStepGlobalInput")?.addEventListener("input", syncPortraitGlobalIdea);
+    $("portraitStepBasePromptInput")?.addEventListener("input", syncPortraitBasePrompt);
+    $("portraitStepManualBox")?.querySelector("[data-portrait-base-prompt-picker]")?.addEventListener("click", () => openPromptPicker("portraitBasePrompt"));
+    return;
+  }
+  const manualKey = stepManualKey(step);
+  $("portraitStepManualBox").innerHTML = `
+    ${portraitSubgroupControls(step)}
+    <label class="portrait-step-note">
+      <span>这个步骤也可以手写</span>
+      <input id="portraitStepManualInput" value="${escapeAttr(state.portraitManual[manualKey] || "")}" placeholder="没有喜欢的图，就写一个想法" />
+    </label>
+  `;
+  $("portraitStepManualInput")?.addEventListener("input", (event) => {
+    state.portraitManual[manualKey] = event.currentTarget.value;
+    syncPortraitInputs();
+  });
+  $("portraitStepManualBox")?.querySelectorAll("[data-portrait-group]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      state.portraitActiveGroups[step.category.name] = button.dataset.portraitGroup || "";
+      await reloadPortraitMaterials();
+    });
+  });
+}
+
+function renderPortraitMaterials() {
+  const target = $("portraitMaterialGrid");
+  if (!target) return;
+  const step = currentPortraitStep();
+  if (step?.final) {
+    target.innerHTML = portraitFinalReviewHtml();
+  } else {
+    const skip = step ? portraitSkipCard(step) : "";
+    const preview = step ? portraitPreviewHtml(step) : "";
+    target.innerHTML = state.portraitMaterials.length
+      ? `${preview}${skip}${state.portraitMaterials.map(portraitMaterialCard).join("")}`
+      : `${preview}${skip}<div class="empty-state portrait-empty">当前步骤没有素材，直接跳过即可。</div>`;
+  }
+  target.querySelectorAll("[data-portrait-material]").forEach((button) => {
+    button.addEventListener("click", () => togglePortraitMaterial(button.dataset.portraitMaterial));
+  });
+  target.querySelectorAll("[data-portrait-preview]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openPortraitReference(button.dataset.portraitPreview || "");
+    });
+  });
+  target.querySelector("[data-close-portrait-preview]")?.addEventListener("click", () => {
+    state.portraitPreviewId = "";
+    renderPortraitMaterials();
+  });
+  target.querySelector("[data-portrait-skip]")?.addEventListener("click", () => nextPortraitStep());
+  target.querySelector("[data-portrait-final-generate]")?.addEventListener("click", generatePortraitPrompt);
+  ensurePromptImages().bind(target);
+  $("portraitLoadMoreButton").hidden=true;
+  const pager=$("portraitPagination");pager.hidden=Boolean(step?.final);
+  if(!step?.final){pager.innerHTML=HuashiPages.markup(filteredPortraitStepItems(step).length,state.portraitPage,state.portraitPageSize);HuashiPages.bind(pager,async next=>{state.portraitPage=next.page;state.portraitPageSize=next.size;await loadPortraitMaterials(false);renderPortraitMaterials();});}
+}
+
+function portraitSkipCard(step) {
+  return `
+    <button class="portrait-material-card portrait-skip-card" type="button" data-portrait-skip>
+      <span class="portrait-skip-icon">跳过</span>
+      <span class="portrait-material-title">这个目录先不选</span>
+      <small>${escapeHtml(step.title)}</small>
+    </button>
+  `;
+}
+
+function portraitPreviewHtml(step) {
+  const item = state.portraitPreviewId
+    ? state.portraitMaterials.find((entry) => entry.id === state.portraitPreviewId && portraitItemInStep(entry, step))
+    : null;
+  if (!item) return "";
+  return `
+    <article class="portrait-preview-card">
+      <button class="tiny-button" type="button" data-close-portrait-preview>收起预览</button>
+      <img loading="lazy" src="${escapeAttr(item.image_url)}" alt="">
+      <div>
+        <strong>${escapeHtml(item.title_cn || "素材")}</strong>
+        <p>${escapeHtml(item.prompt_hint_cn || item.prompt_cn || item.title_en || "")}</p>
+      </div>
+    </article>
+  `;
+}
+
+function portraitMaterialCard(item) {
+  const selected = isPortraitSelected(item.id),title=item.title_cn || "素材";
+  return `
+    <article class="portrait-material-card inspiration-card reference-card ${selected ? "selected" : ""}">
+      <button class="portrait-material-image inspiration-card-cover reference-cover" type="button" data-preview-image data-full-thumb="${escapeAttr(item.image_url)}" data-full-title="${escapeAttr(title)}" data-preview-caption="完整构图 · 点击查看详情" data-portrait-preview="${escapeAttr(item.id)}" aria-label="查看完整图片：${escapeAttr(title)}">
+        <img loading="lazy" decoding="async" src="${escapeAttr(item.image_url)}" alt="${escapeAttr(title)}">
+      </button>
+      <div class="inspiration-card-body reference-card-copy">
+        <strong class="portrait-material-title inspiration-card-title">${escapeHtml(title)}</strong>
+        <p class="inspiration-card-summary">${escapeHtml(item.prompt_hint_cn || item.prompt_cn || item.title_en || "打开图片查看素材细节。")}</p>
+      </div>
+      <div class="portrait-material-actions inspiration-card-actions">
+        <button type="button" data-portrait-preview="${escapeAttr(item.id)}">查看图片</button>
+        <button type="button" data-portrait-material="${escapeAttr(item.id)}" aria-pressed="${selected}">${selected ? "✓ 已选" : "＋ 选择"}</button>
+      </div>
+    </article>
+  `;
+}
+
+function openPortraitReference(id){
+  const item=state.portraitMaterials.find(x=>x.id===id);if(!item)return;
+  const d=$('inspirationDetail');ensurePromptImages().hidePreview();personalDetailReturn=document.activeElement;d.dataset.owner='personal';
+  HuashiInspirationDetail.show(d,{id:'portrait:'+id,domain:'portrait',title:item.title_cn||'人像素材',image:item.image_url,category:item.slot||item.category,description:item.prompt_hint_cn||item.prompt_cn||'',prompts:{zh:item.prompt_hint_cn||item.prompt_cn||'',en:item.prompt_hint_en||''},source_urls:[]},{images:ensurePromptImages(),copy:copyText,toast:showToast,close:closePromptDetail,primaryHTML:`<button type="button" class="button" data-select-portrait-reference>${isPortraitSelected(id)?'移出已选':'选择素材'}</button>`,bindExtra:root=>{root.querySelector('[data-select-portrait-reference]').onclick=()=>{closePromptDetail();togglePortraitMaterial(id);}}});
+}
+
+function portraitFinalReviewHtml() {
+  return `
+    <div class="portrait-final-review">
+      <strong>已经过完一遍素材</strong>
+      <p>现在可以直接生成，或者粘贴一段成熟提示词，让模型把你选的素材和补充想法融入进去。</p>
+      <button class="primary-button" type="button" data-portrait-final-generate>生成提示词</button>
+    </div>
+  `;
+}
+
+function renderPortraitSummary() {
+  const html = portraitSummaryHtml();
+  if ($("portraitSlotList")) $("portraitSlotList").innerHTML = html;
+  if ($("portraitDrawerSlotList")) $("portraitDrawerSlotList").innerHTML = html;
+  bindPortraitSummaryControls($("portraitSlotList"));
+  bindPortraitSummaryControls($("portraitDrawerSlotList"));
+}
+
+function portraitSummaryHtml() {
+  if (!state.portraitSlots.length) return `<div class="empty-state compact-empty">素材槽位加载中</div>`;
+  const knownManualKeys = new Set(["global", ...state.portraitSlots.map((slot) => slot.id)]);
+  const slotSections = state.portraitSlots
+    .filter((slot) => slot.id !== "negative")
+    .map((slot) => {
+      const selected = state.portraitSelected[slot.id] || [];
+      const manual = state.portraitManual[slot.id] || "";
+      if (!selected.length && !manual.trim()) return "";
+      return `
+        <section class="portrait-summary-group">
+          <div class="portrait-slot-head">
+            <span>${escapeHtml(slot.label)}</span>
+            <small>${selected.length}${manual.trim() ? " + 手写" : ""}</small>
+          </div>
+          <div class="portrait-selected-chips">
+            ${selected.map((item) => `
+              <button class="portrait-chip" type="button" data-remove-portrait-material="${escapeAttr(item.id)}">
+                ${escapeHtml(item.title_cn)} <b>×</b>
+              </button>
+            `).join("")}
+            ${manual.trim() ? `
+              <button class="portrait-chip is-manual" type="button" data-clear-portrait-manual="${escapeAttr(slot.id)}">
+                ${escapeHtml(manual.trim())} <b>×</b>
+              </button>
+            ` : ""}
+          </div>
+        </section>
+      `;
+    })
+    .join("");
+  const manualSections = Object.entries(state.portraitManual || {})
+    .filter(([key, value]) => !knownManualKeys.has(key) && String(value || "").trim())
+    .map(([key, value]) => `
+      <section class="portrait-summary-group">
+        <div class="portrait-slot-head">
+          <span>${escapeHtml(portraitManualKeyLabel(key))}</span>
+          <small>手写</small>
+        </div>
+        <div class="portrait-selected-chips">
+          <button class="portrait-chip is-manual" type="button" data-clear-portrait-manual="${escapeAttr(key)}">
+            ${escapeHtml(String(value || "").trim())} <b>×</b>
+          </button>
+        </div>
+      </section>
+    `)
+    .join("");
+  const sections = `${slotSections}${manualSections}`;
+  return sections || `<div class="empty-state compact-empty">还没选素材。按步骤点喜欢的图，或在步骤里手写。</div>`;
+}
+
+function bindPortraitSummaryControls(root) {
+  if (!root) return;
+  root.querySelectorAll("[data-remove-portrait-material]").forEach((button) => {
+    button.addEventListener("click", () => removePortraitMaterial(button.dataset.removePortraitMaterial));
+  });
+  root.querySelectorAll("[data-clear-portrait-manual]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.portraitManual[button.dataset.clearPortraitManual] = "";
+      renderPortrait();
+      syncPortraitInputs();
+    });
+  });
+}
+
+function renderPortraitModels() {
+  const input = $("portraitModelInput");
+  if (!input) return;
+  input.innerHTML = state.promptModels
+    .map((model) => `
+      <option value="${escapeAttr(model.id)}" ${model.default ? "selected" : ""} ${model.available ? "" : "disabled"}>
+        ${escapeHtml(model.label)}${model.available ? "" : "（未配置）"}
+      </option>
+    `)
+    .join("");
+}
+
+function renderPortraitResult() {
+  const result = state.portraitResult;
+  const targets = [$("portraitResult"), $("portraitMobileResult")].filter(Boolean);
+  if (!result) {
+    targets.forEach((target) => {
+      target.className = target.id === "portraitMobileResult" ? "portrait-mobile-result-panel portrait-result empty-state" : "portrait-result empty-state";
+      target.innerHTML = "选择素材或输入想法后生成";
+    });
+    return;
+  }
+  const html = portraitResultHtml(result);
+  targets.forEach((target) => {
+    target.className = target.id === "portraitMobileResult" ? "portrait-mobile-result-panel portrait-result" : "portrait-result";
+    target.innerHTML = html;
+    bindPortraitResultControls(target);
+  });
+}
+
+function portraitResultHtml(result) {
+  const importApps = promptCapableApps();
+  const defaultAppId = (appPromptInput(selectedApp()) ? selectedApp()?.id : importApps[0]?.id) || "";
+  return `
+    <div class="portrait-result-toolbar">
+      <button class="secondary-button" type="button" data-save-portrait-prompt>保存到预设</button>
+      <div class="portrait-import-control">
+        <select data-portrait-app-target ${importApps.length ? "" : "disabled"}>
+          ${importApps.length
+            ? importApps.map((app) => `<option value="${escapeAttr(app.id)}" ${app.id === defaultAppId ? "selected" : ""}>${escapeHtml(app.name)}</option>`).join("")
+            : `<option value="">暂无可填提示词的应用</option>`}
+        </select>
+        <button class="primary-button" type="button" data-import-portrait-prompt ${importApps.length ? "" : "disabled"}>导入应用</button>
+      </div>
+    </div>
+    <article class="portrait-result-card">
+      <div class="portrait-result-head">
+        <strong>中文提示词</strong>
+        <button class="tiny-button" type="button" data-copy-portrait="prompt_cn">复制</button>
+      </div>
+      <p>${escapeHtml(result.prompt_cn)}</p>
+    </article>
+    <article class="portrait-result-card">
+      <div class="portrait-result-head">
+        <strong>英文生图提示词</strong>
+        <button class="tiny-button" type="button" data-copy-portrait="prompt_en">复制</button>
+      </div>
+      <p>${escapeHtml(result.prompt_en)}</p>
+    </article>
+    <article class="portrait-result-card">
+      <div class="portrait-result-head">
+        <strong>负面提示词</strong>
+        <button class="tiny-button" type="button" data-copy-portrait="negative_prompt">复制</button>
+      </div>
+      <p>${escapeHtml(result.negative_prompt)}</p>
+    </article>
+    ${result.safety_note_cn ? `<div class="portrait-safe-note">${escapeHtml(result.safety_note_cn)}</div>` : ""}
+    ${(result.next_steps_cn || []).length ? `
+      <div class="portrait-next">
+        <strong>下一步可以这样改</strong>
+        ${(result.next_steps_cn || []).map((item) => `<button type="button" data-portrait-next="${escapeAttr(item)}">${escapeHtml(item)}</button>`).join("")}
+      </div>
+    ` : ""}
+  `;
+}
+
+function bindPortraitResultControls(target) {
+  if (!target) return;
+  target.querySelector("[data-save-portrait-prompt]")?.addEventListener("click", (event) => {
+    savePortraitPromptPreset(event.currentTarget);
+  });
+  target.querySelector("[data-import-portrait-prompt]")?.addEventListener("click", (event) => {
+    const select = target.querySelector("[data-portrait-app-target]");
+    importPortraitPromptToApp(select?.value || "", event.currentTarget);
+  });
+  target.querySelectorAll("[data-copy-portrait]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await copyText(state.portraitResult?.[button.dataset.copyPortrait] || "", button);
+    });
+  });
+  target.querySelectorAll("[data-portrait-next]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.portraitManual.global = button.dataset.portraitNext || "";
+      syncPortraitInputs();
+      $("portraitGlobalIdeaInput")?.focus();
+      $("portraitStepGlobalInput")?.focus();
+    });
+  });
+}
+
+function portraitPromptContent() {
+  const result = state.portraitResult || {};
+  return String(result.prompt_en || result.prompt_cn || "").trim();
+}
+
+async function savePortraitPromptPreset(button = null) {
+  const content = portraitPromptContent();
+  if (!content) {
+    showToast("没有可保存的提示词", "error");
+    return;
+  }
+  const result = state.portraitResult || {};
+  const noteParts = [
+    result.prompt_cn ? `中文：${result.prompt_cn}` : "",
+    result.negative_prompt ? `负面提示词：${result.negative_prompt}` : "",
+    result.safety_note_cn ? `说明：${result.safety_note_cn}` : "",
+  ].filter(Boolean);
+  HuashiCreation.savePrompt(content, state.prompts, {
+    api,toast:showToast,folderId:state.promptFolderId,
+    title:`人像提示词 ${formatTime(new Date().toISOString())}`,
+    tags:"人像, 人像工坊",note:noteParts.join("\n\n"),
+    saved:prompt => {
+      state.prompts = [prompt, ...state.prompts.filter(item => item.id !== prompt.id)];
+      flashButtonLabel(button,"已保存");
+      HuashiPromptFolders.refresh(api).then(renderPrompts).catch(error => showToast(error.message,"error"));
+    },
+  });
+}
+
+function importPortraitPromptToApp(appId, button = null) {
+  const content = portraitPromptContent();
+  if (!content) {
+    showToast("没有可导入的提示词", "error");
+    return;
+  }
+  const app = state.apps.find((item) => item.id === appId);
+  if (!app || !appPromptInput(app)) {
+    showToast("这个应用没有可填写的提示词字段", "error");
+    return;
+  }
+  state.selectedAppId = app.id;
+  state.pendingComposePrompt = content;
+  flashButtonLabel(button, "已导入");
+  setNotice(`已导入到 ${app.name}，可继续补图或生成。`, "info");
+  setView("compose");
+}
+
+async function togglePortraitMaterial(id) {
+  const item = state.portraitMaterials.find((entry) => entry.id === id);
+  if (!item) return;
+  if (isPortraitSelected(id)) {
+    removePortraitMaterial(id);
+    return;
+  }
+  const step = currentPortraitStep();
+  const added = addPortraitMaterial(item, { replaceCategory: portraitStepSelectionMode(step) === "single" });
+  if (!added) return;
+  renderTitle();
+  renderPortrait();
+  if (portraitStepAutoAdvance(step)) await nextPortraitStep();
+}
+
+function addPortraitMaterial(item, options = {}) {
+  if (!item) return false;
+  const slotId = item.slot_id || "uncategorized";
+  const slotInfo = portraitSlotById(slotId);
+  const limit = Number(slotInfo?.limit || 1);
+  if (options.replaceCategory && item.category) {
+    removePortraitMaterialsByCategory(item.category);
+    state.portraitManual[`category:${item.category}`] = "";
+  }
+  const selected = state.portraitSelected[slotId] || [];
+  if (selected.length >= limit) {
+    showToast(`${slotInfo?.label || item.slot} 最多选 ${limit} 个`, "error");
+    return false;
+  }
+  const conflict = portraitConflict(slotInfo, item, selected);
+  if (conflict) {
+    showToast(`可能冲突：${conflict}。可先移除旧素材再选。`, "error");
+    return false;
+  }
+  state.portraitSelected[slotId] = [...selected, item];
+  return true;
+}
+
+function removePortraitMaterial(id) {
+  Object.keys(state.portraitSelected).forEach((slotId) => {
+    state.portraitSelected[slotId] = (state.portraitSelected[slotId] || []).filter((item) => item.id !== id);
+  });
+  renderTitle();
+  renderPortrait();
+}
+
+function removePortraitMaterialsByCategory(categoryName) {
+  Object.keys(state.portraitSelected).forEach((slotId) => {
+    state.portraitSelected[slotId] = (state.portraitSelected[slotId] || []).filter((item) => item.category !== categoryName);
+  });
+}
+
+function portraitConflict(slotInfo, item, selected) {
+  const text = `${item.title_cn} ${(item.tags || []).join(" ")}`;
+  for (const rule of slotInfo?.conflicts || []) {
+    const hit = (rule.keywords || []).find((keyword) => text.includes(keyword));
+    if (!hit) continue;
+    const old = selected.find((entry) => (rule.keywords || []).some((keyword) => `${entry.title_cn} ${(entry.tags || []).join(" ")}`.includes(keyword)) && !`${entry.title_cn} ${(entry.tags || []).join(" ")}`.includes(hit));
+    if (old) return `${old.title_cn} / ${item.title_cn}`;
+  }
+  return "";
+}
+
+function isPortraitSelected(id) {
+  return Object.values(state.portraitSelected).some((items) => (items || []).some((item) => item.id === id));
+}
+
+function selectedPortraitCount() {
+  return Object.values(state.portraitSelected).reduce((sum, items) => sum + (items || []).length, 0);
+}
+
+function portraitCanGenerate() {
+  return selectedPortraitCount() > 0 || Object.values(state.portraitManual).some((value) => String(value || "").trim()) || state.portraitBasePrompt.trim();
+}
+
+function portraitSlotById(slotId) {
+  return state.portraitSlots.find((slot) => slot.id === slotId);
+}
+
+function setPortraitStatus(message, kind = "info") {
+  [$("portraitStatus"), $("portraitMobileStatus")].filter(Boolean).forEach((target) => {
+    target.classList.toggle("hidden", !message);
+    target.dataset.kind = kind;
+    target.textContent = message || "";
+  });
+}
+
+async function reloadPortraitMaterials() {
+  state.portraitLoading = true;
+  renderPortrait();
+  try {
+    await loadPortraitMaterials(true);
+  } catch (error) {
+    setPortraitStatus(error.message, "error");
+  } finally {
+    state.portraitLoading = false;
+    renderPortrait();
+  }
+}
+
+async function goPortraitStep(index) {
+  const steps = portraitSteps();
+  if (!steps.length) return;
+  state.portraitStepIndex = Math.max(0, Math.min(index, steps.length - 1));
+  state.portraitQuery = "";
+  state.portraitPreviewId = "";
+  if (currentPortraitStep()?.final) {
+    state.portraitMaterials = [];
+    state.portraitNextOffset = null;
+    renderPortrait();
+    return;
+  }
+  await reloadPortraitMaterials();
+}
+
+async function nextPortraitStep() {
+  const steps = portraitSteps();
+  if (!steps.length) return;
+  if (state.portraitStepIndex >= steps.length - 1) {
+    await goPortraitStep(0);
+    return;
+  }
+  await goPortraitStep(state.portraitStepIndex + 1);
+}
+
+async function prevPortraitStep() {
+  await goPortraitStep(state.portraitStepIndex - 1);
+}
+
+async function loadMorePortraitMaterials() {
+  if (state.portraitNextOffset === null || state.portraitLoading) return;
+  state.portraitLoading = true;
+  renderPortrait();
+  try {
+    await loadPortraitMaterials(false);
+  } catch (error) {
+    setPortraitStatus(error.message, "error");
+  } finally {
+    state.portraitLoading = false;
+    renderPortrait();
+  }
+}
+
+function usePortraitBasePrompt(content) {
+  state.portraitBasePrompt = content || "";
+  syncPortraitInputs();
+  renderPortrait();
+  showToast("已填入成熟提示词", "info");
+}
+
+function syncPortraitImportPrompt(event) {
+  state.portraitImportPrompt = event.currentTarget.value;
+}
+
+async function analyzePortraitImportPrompt() {
+  const prompt = String(state.portraitImportPrompt || "").trim();
+  if (!prompt) {
+    setPortraitStatus("先粘贴一段提示词。", "error");
+    return;
+  }
+  state.portraitLoading = true;
+  setPortraitStatus("正在拆解提示词，并映射到人像槽位...");
+  renderPortrait();
+  try {
+    const payload = await api("/api/prompt-agent/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt,
+        model: $("portraitModelInput")?.value || "",
+      }),
+    });
+    state.portraitImportAnalysis = payload.analysis || null;
+    state.portraitImportMappedItems = mapPortraitImportItems(state.portraitImportAnalysis);
+    applyPortraitImportAnalysis(prompt);
+    setPortraitStatus("已拆到人像槽位。你可以直接生成，也可以点建议或去对应目录换素材。", "info");
+  } catch (error) {
+    setPortraitStatus(error.message, "error");
+  } finally {
+    state.portraitLoading = false;
+    renderPortrait();
+  }
+}
+
+function applyPortraitImportAnalysis(prompt) {
+  state.portraitBasePrompt = prompt;
+  state.portraitImportMappedItems.forEach((item) => {
+    if (item.slotId && item.slotId !== "global" && portraitImportUsefulText(item.original)) {
+      applyPortraitImportValue(item, item.original, { quiet: true, append: true });
+    }
+  });
+  syncPortraitInputs();
+}
+
+function mapPortraitImportItems(analysis) {
+  const items = Array.isArray(analysis?.editable_items) ? analysis.editable_items : [];
+  return items.map((item) => {
+    const mapping = portraitImportMapping(item);
+    return {
+      id: item.id || "",
+      label: item.label || mapping.label,
+      original: item.original || "",
+      placeholder: item.placeholder || "",
+      suggestions: Array.isArray(item.suggestions) ? item.suggestions.filter(portraitImportUsefulText).slice(0, 5) : [],
+      slotId: mapping.slotId,
+      slotLabel: mapping.label,
+      categoryName: mapping.categoryName,
+      manualKey: mapping.manualKey,
+      searchText: item.original || item.placeholder || "",
+    };
+  });
+}
+
+function portraitImportMapping(item) {
+  const id = String(item?.id || "").toLowerCase();
+  const label = String(item?.label || "");
+  const text = `${id} ${label}`.toLowerCase();
+  if (text.includes("hair") || label.includes("发型") || label.includes("发色")) {
+    return portraitImportSlot("appearance", "发型", "02_发型");
+  }
+  if (text.includes("expression") || text.includes("mood") || label.includes("表情") || label.includes("神情") || label.includes("气质")) {
+    return portraitImportSlot("appearance", "表情", "08_表情");
+  }
+  if (text.includes("person") || text.includes("subject") || label.includes("人物") || label.includes("身份")) {
+    return portraitImportSlot("subject", "人物", "01_人物");
+  }
+  if (text.includes("clothing") || text.includes("outfit") || label.includes("服") || label.includes("穿")) {
+    return portraitImportSlot("clothing", "服饰", "03_服饰");
+  }
+  if (text.includes("pose") || text.includes("action") || label.includes("姿势") || label.includes("动作")) {
+    return portraitImportSlot("pose", "姿势", "04_姿势");
+  }
+  if (text.includes("camera") || text.includes("shot") || text.includes("angle") || label.includes("镜头") || label.includes("景别") || label.includes("角度") || label.includes("构图")) {
+    return portraitImportSlot("camera", "镜头", "06_镜头");
+  }
+  if (text.includes("light") || label.includes("光") || label.includes("时间")) {
+    return portraitImportSlot("lighting", "光线", "07_光线");
+  }
+  if (text.includes("scene") || text.includes("location") || label.includes("场景") || label.includes("地点") || label.includes("背景")) {
+    return portraitImportSlot("scene", "场景", "05_场景");
+  }
+  if (text.includes("prop") || label.includes("道具") || label.includes("细节")) {
+    return portraitImportSlot("scene", "细节", "09_细节");
+  }
+  if (text.includes("quality") || text.includes("style") || text.includes("color") || label.includes("画感") || label.includes("画质") || label.includes("质感") || label.includes("色彩") || label.includes("氛围")) {
+    return portraitImportSlot("image_feel", "画感", "");
+  }
+  return { slotId: "global", label: "补充", categoryName: "", manualKey: "global" };
+}
+
+function portraitImportSlot(slotId, label, categoryName) {
+  return { slotId, label, categoryName, manualKey: categoryName ? `category:${categoryName}` : slotId };
+}
+
+function portraitImportUsefulText(value) {
+  const text = String(value || "").trim();
+  if (!text) return false;
+  const normalized = text.toLowerCase();
+  const weakValues = new Set(["无", "无明确", "未明确", "未指定", "未明确指定", "不明确", "none", "n/a", "na", "随机", "自然", "普通", "保持原样", "原样"]);
+  if (weakValues.has(normalized)) return false;
+  if (/^(无|未明确|未指定|不明确)/.test(text)) return false;
+  return true;
+}
+
+function portraitImportSlotDrafts() {
+  const order = ["01_人物", "02_发型", "03_服饰", "04_姿势", "05_场景", "06_镜头", "07_光线", "08_表情", "09_细节", "image_feel", "global"];
+  const groups = new Map();
+  (state.portraitImportMappedItems || []).forEach((item) => {
+    const key = item.categoryName || item.manualKey || item.slotId || "global";
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        label: item.slotLabel || item.label || "补充",
+        manualKey: item.manualKey || "global",
+        slotId: item.slotId || "global",
+        categoryName: item.categoryName || "",
+        values: [],
+        suggestions: [],
+      });
+    }
+    const group = groups.get(key);
+    if (portraitImportUsefulText(item.original) && !group.values.includes(item.original)) group.values.push(item.original);
+    (item.suggestions || []).forEach((suggestion) => {
+      if (portraitImportUsefulText(suggestion) && !group.values.includes(suggestion) && !group.suggestions.includes(suggestion)) {
+        group.suggestions.push(suggestion);
+      }
+    });
+  });
+  return [...groups.values()]
+    .filter((group) => group.values.length || group.suggestions.length)
+    .sort((a, b) => {
+      const ai = order.indexOf(a.categoryName || a.slotId || a.key);
+      const bi = order.indexOf(b.categoryName || b.slotId || b.key);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+}
+
+function portraitImportDraftItem(draft) {
+  if (!draft) return null;
+  return {
+    manualKey: draft.manualKey || draft.slotId || "global",
+    slotId: draft.slotId || "global",
+    slotLabel: draft.label || "槽位",
+    categoryName: draft.categoryName || "",
+  };
+}
+
+function applyPortraitImportValue(item, value, options = {}) {
+  const text = String(value || "").trim();
+  if (!item || !text) return;
+  const key = item.manualKey || item.slotId || `import:${item.label || "补充"}`;
+  if (options.append) {
+    const old = String(state.portraitManual[key] || "").trim();
+    state.portraitManual[key] = old && !old.includes(text) ? `${old}、${text}` : (old || text);
+  } else {
+    state.portraitManual[key] = text;
+  }
+  if (!options.quiet) {
+    syncPortraitInputs();
+    renderPortrait();
+    showToast(`已填入${item.slotLabel || "槽位"}`, "info");
+  }
+}
+
+async function focusPortraitImportDraft(index) {
+  const draft = portraitImportSlotDrafts()[index];
+  if (!draft) return;
+  const categoryName = draft.categoryName;
+  if (!categoryName) {
+    const value = draft.values[0] || draft.suggestions[0] || "";
+    if (value) state.portraitManual[draft.manualKey || "global"] = value;
+    renderPortrait();
+    return;
+  }
+  const steps = portraitSteps();
+  const targetIndex = steps.findIndex((step) => step.category?.name === categoryName);
+  if (targetIndex >= 0) {
+    await goPortraitStep(targetIndex);
+    state.portraitQuery = "";
+  }
+}
+
+function clearPortraitImport() {
+  state.portraitImportPrompt = "";
+  state.portraitImportAnalysis = null;
+  state.portraitImportMappedItems = [];
+  if ($("portraitImportPromptInput")) $("portraitImportPromptInput").value = "";
+  renderPortrait();
+  setPortraitStatus("已清空导入解析，已选素材和手写槽位会保留。", "info");
+}
+
+async function generatePortraitPrompt() {
+  if (!portraitCanGenerate()) {
+    setPortraitStatus("先选择素材，或至少写一个想法。", "error");
+    return;
+  }
+  state.portraitLoading = true;
+  state.portraitResult = null;
+  setPortraitStatus("正在组织素材并生成一条提示词...");
+  renderPortrait();
+  try {
+    const result = await api("/api/portrait/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        selected: state.portraitSelected,
+        manual: state.portraitManual,
+        base_prompt: state.portraitBasePrompt,
+        model: $("portraitModelInput").value,
+      }),
+    });
+    state.portraitResult = result;
+    setPortraitStatus("已生成。英文可直接复制去生图，中文方便你检查。", "info");
+  } catch (error) {
+    setPortraitStatus(error.message, "error");
+  } finally {
+    state.portraitLoading = false;
+    renderPortrait();
+  }
+}
+
+function portraitSteps() {
+  const categories = state.portraitCategories || [];
+  return [
+    ...categories.map((category) => ({
+      id: category.name,
+      title: cleanPortraitCategoryName(category.name),
+      category,
+      final: false,
+    })),
+    { id: "__final__", title: "最后补充", final: true },
+  ];
+}
+
+function currentPortraitStep() {
+  const steps = portraitSteps();
+  return steps[Math.min(state.portraitStepIndex, Math.max(steps.length - 1, 0))] || null;
+}
+
+function filteredPortraitStepItems(step) {
+  if (!step || step.final) return [];
+  const query = state.portraitQuery.trim().toLowerCase();
+  return (state.portraitCatalogItems || [])
+    .filter((item) => portraitItemInStep(item, step))
+    .filter((item) => {
+      if (!query) return true;
+      return `${item.title_cn} ${item.title_en} ${item.category} ${item.slot}`.toLowerCase().includes(query);
+    });
+}
+
+function portraitItemInStep(item, step) {
+  if (!step?.category || item.category !== step.category.name) return false;
+  const groupId = state.portraitActiveGroups[step.category.name] || "";
+  return !groupId || groupId === portraitSubgroupId(step.category.name, item);
+}
+
+function portraitSubgroupControls(step) {
+  if (!step?.category) return "";
+  const items = (state.portraitCatalogItems || []).filter((item) => item.category === step.category.name);
+  const groups = portraitSubgroups(step.category.name, items);
+  if (!groups.length) return "";
+  const active = state.portraitActiveGroups[step.category.name] || "";
+  return `
+    <div class="portrait-subgroup-strip">
+      <button class="${!active ? "active" : ""}" type="button" data-portrait-group="">全部 ${items.length}</button>
+      ${groups.map((group) => `
+        <button class="${active === group.id ? "active" : ""}" type="button" data-portrait-group="${escapeAttr(group.id)}">
+          ${escapeHtml(group.title)} ${Number(group.count || 0)}
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function portraitSubgroups(categoryName, items) {
+  const definitions = portraitSubgroupDefinitions(categoryName);
+  const counts = new Map();
+  items.forEach((item) => {
+    const groupId = portraitSubgroupId(categoryName, item);
+    counts.set(groupId, (counts.get(groupId) || 0) + 1);
+  });
+  return definitions
+    .map((definition) => ({ ...definition, count: counts.get(definition.id) || 0 }))
+    .filter((definition) => definition.count > 0);
+}
+
+function portraitSubgroupId(categoryName, item) {
+  const text = `${item.title_cn || ""} ${item.title_en || ""}`.toLowerCase();
+  const definitions = portraitSubgroupDefinitions(categoryName);
+  const hit = definitions.find((definition) => (definition.keywords || []).some((keyword) => text.includes(keyword.toLowerCase())));
+  return hit?.id || "other";
+}
+
+function portraitSubgroupDefinitions(categoryName) {
+  const name = String(categoryName || "");
+  if (name.startsWith("01_")) {
+    return [
+      subgroup("everyday", "日韩日常", ["日韩", "日常", "通勤", "刚入职", "清爽", "自然", "japanese", "korean", "everyday", "commuter"]),
+      subgroup("fresh", "清新温柔", ["清新", "温柔", "邻家", "年轻", "休息", "fresh", "soft", "gentle", "young"]),
+      subgroup("urban", "都市轻熟", ["都市", "轻熟", "画廊", "成熟", "urban", "elegant", "gallery", "polished"]),
+      subgroup("literary", "文艺清冷", ["文艺", "清冷", "电影", "安静", "literary", "cool", "cinematic", "quiet"]),
+      subgroup("special", "特色身份", ["古典", "缪斯", "演员", "度假", "classical", "muse", "actress", "resort"]),
+      subgroup("other", "其他人物", []),
+    ];
+  }
+  if (name.startsWith("02_")) {
+    return [
+      subgroup("long", "长发", ["长发", "长直", "波浪", "大波浪", "好莱坞", "及腰", "long"]),
+      subgroup("medium", "中长发", ["中长", "锁骨", "及肩", "lob", "medium", "shoulder"]),
+      subgroup("short", "短发", ["短发", "波波", "寸头", "底削", "pixie", "bob", "short"]),
+      subgroup("updo", "盘发马尾", ["发髻", "丸子", "马尾", "盘发", "髻", "bun", "ponytail", "updo"]),
+      subgroup("braid", "编发", ["辫", "braid"]),
+      subgroup("bangs", "刘海分线", ["刘海", "中分", "侧分", "八字", "part", "bang"]),
+      subgroup("other", "其他发型", []),
+    ];
+  }
+  if (name.startsWith("03_")) {
+    return [
+      subgroup("dress", "连衣裙礼服", ["裙", "礼服", "dress", "gown"]),
+      subgroup("top", "衬衫上衣", ["衬衫", "上衣", "吊带", "背心", "shirt", "blouse", "top", "camisole"]),
+      subgroup("outer", "外套针织", ["外套", "针织", "开衫", "西装", "coat", "cardigan", "knit", "jacket", "blazer"]),
+      subgroup("suit", "套装裤装", ["套装", "裤", "西裤", "suit", "pants", "trousers"]),
+      subgroup("hanfu", "国风古风", ["汉服", "旗袍", "敦煌", "古", "国风", "hanfu", "qipao"]),
+      subgroup("vacation", "泳装度假", ["泳", "比基尼", "沙滩", "bikini", "swim", "beach"]),
+      subgroup("material", "材质细节", ["真丝", "薄纱", "缎", "纱", "蕾丝", "皮革", "silk", "satin", "lace", "sheer"]),
+      subgroup("other", "其他服饰", []),
+    ];
+  }
+  if (name.startsWith("04_")) {
+    return [
+      subgroup("stand", "站姿", ["站", "standing"]),
+      subgroup("sit", "坐姿", ["坐", "sitting", "seated"]),
+      subgroup("hand", "手部动作", ["手", "整理", "触碰", "抬手", "hand"]),
+      subgroup("walk", "行走动态", ["走", "跑", "转身", "动态", "walking", "motion"]),
+      subgroup("lean", "倚靠侧身", ["倚", "靠", "侧身", "lean", "side"]),
+      subgroup("lie", "躺卧", ["躺", "卧", "reclining", "lying"]),
+      subgroup("backside", "背影回眸", ["背", "回眸", "背影", "back", "glance"]),
+      subgroup("other", "其他姿势", []),
+    ];
+  }
+  if (name.startsWith("05_")) {
+    return [
+      subgroup("indoor", "室内日常", ["白墙", "窗边", "卧室", "客厅", "房间", "床", "white room", "window", "bedroom", "living"]),
+      subgroup("street", "街边咖啡", ["街", "咖啡", "通勤", "neighborhood", "street", "cafe"]),
+      subgroup("outdoor", "公园户外", ["公园", "树", "海", "沙滩", "park", "tree", "coastal", "beach"]),
+      subgroup("hotel", "酒店民宿", ["酒店", "民宿", "公寓", "hotel", "apartment"]),
+      subgroup("studio", "影棚画廊", ["影棚", "画廊", "studio", "gallery"]),
+      subgroup("night", "夜景雨天", ["夜", "雨", "天台", "rooftop", "night", "rain"]),
+      subgroup("other", "其他场景", []),
+    ];
+  }
+  if (name.startsWith("06_")) {
+    return [
+      subgroup("shot", "景别", ["特写", "半身", "全身", "近景", "中景", "close", "full", "medium"]),
+      subgroup("angle", "角度", ["俯拍", "仰拍", "平视", "低角度", "高角度", "angle"]),
+      subgroup("lens", "焦段", ["mm", "广角", "长焦", "镜头", "lens", "wide", "telephoto"]),
+      subgroup("composition", "构图", ["构图", "居中", "留白", "三分", "composition", "negative space"]),
+      subgroup("view", "视角运动", ["自拍", "视角", "跟拍", "俯视", "pov", "selfie", "tracking"]),
+      subgroup("other", "其他镜头", []),
+    ];
+  }
+  if (name.startsWith("07_")) {
+    return [
+      subgroup("natural", "自然窗光", ["自然光", "窗", "日光", "daylight", "window", "natural"]),
+      subgroup("soft", "柔光", ["柔", "雾", "散射", "soft", "mist", "diffused"]),
+      subgroup("side", "侧光逆光", ["侧光", "逆光", "轮廓", "rim", "backlight", "side light"]),
+      subgroup("time", "晨昏夜光", ["晨", "黄昏", "夜", "月光", "sunset", "night", "moon", "morning"]),
+      subgroup("studio", "棚拍明暗", ["伦勃朗", "棚", "硬光", "主光", "rembrandt", "studio", "key light"]),
+      subgroup("other", "其他光线", []),
+    ];
+  }
+  if (name.startsWith("08_")) {
+    return [
+      subgroup("smile", "微笑", ["笑", "smile"]),
+      subgroup("bright", "元气自然", ["元气", "清新", "自然", "明朗", "bright", "fresh", "natural"]),
+      subgroup("gentle", "温柔平静", ["温柔", "平静", "安静", "serene", "calm", "gentle", "quiet"]),
+      subgroup("cool", "清冷", ["清冷", "冷", "cool", "cold"]),
+      subgroup("calm", "清冷平静", ["清冷", "平静", "冷", "serene", "calm", "cold"]),
+      subgroup("side", "回眸侧脸", ["回眸", "侧脸", "侧", "profile", "glance"]),
+      subgroup("down", "低头闭眼", ["低头", "闭眼", "垂眸", "closed", "downcast"]),
+      subgroup("lazy", "慵懒神秘", ["慵懒", "神秘", "lazy", "mysterious"]),
+      subgroup("heavy", "忧郁强情绪", ["忧郁", "脆弱", "悲伤", "凶", "melancholy", "vulnerable", "sad", "fierce"]),
+      subgroup("other", "其他表情", []),
+    ];
+  }
+  if (name.startsWith("09_")) {
+    return [
+      subgroup("hair", "发饰", ["发夹", "发卡", "发带", "丝巾", "簪", "步摇", "帽", "头纱", "珍珠", "珠宝", "clip", "scarf", "pin", "hat", "pearl"]),
+      subgroup("wall", "墙面窗帘", ["白墙", "墙", "窗帘", "窗影", "wall", "curtain", "shadow"]),
+      subgroup("furniture", "家具床品", ["床", "床品", "木椅", "地板", "wood", "bedding", "chair", "floor"]),
+      subgroup("table", "桌面花束", ["咖啡", "台灯", "花束", "桌", "coffee", "lamp", "flower", "table"]),
+      subgroup("glass", "玻璃水汽", ["玻璃", "水汽", "镜", "steam", "glass", "mirror"]),
+      subgroup("ground", "地面反光", ["地面", "石材", "反光", "floor", "reflective", "stone"]),
+      subgroup("other", "其他细节", []),
+    ];
+  }
+  return [subgroup("all", cleanPortraitCategoryName(categoryName), [])];
+}
+
+function subgroup(id, title, keywords) {
+  return { id, title, keywords };
+}
+
+function portraitStepCountLabel(step) {
+  const total = filteredPortraitStepItems(step).length;
+  const visible = Math.min(state.portraitMaterials.length, total);
+  return `${visible}${state.portraitNextOffset !== null ? `/${total}` : ""} 个素材`;
+}
+
+function stepSlotId(step) {
+  const sample = state.portraitMaterials.find((item) => item.category === step?.category?.name);
+  if (sample) return sample.slot_id || "uncategorized";
+  const name = step?.category?.name || "";
+  if (name.startsWith("01_")) return "subject";
+  if (name.startsWith("02_") || name.startsWith("08_")) return "appearance";
+  if (name.startsWith("03_")) return "clothing";
+  if (name.startsWith("04_")) return "pose";
+  if (name.startsWith("05_")) return "scene";
+  if (name.startsWith("06_")) return "camera";
+  if (name.startsWith("07_")) return "lighting";
+  if (name.startsWith("09_")) return "appearance";
+  return "uncategorized";
+}
+
+function stepManualKey(step) {
+  if (step?.category?.name) return `category:${step.category.name}`;
+  return stepSlotId(step);
+}
+
+function cleanPortraitCategoryName(name) {
+  return String(name || "素材").replace(/^\d+_/, "");
+}
+
+function portraitManualKeyLabel(key) {
+  if (String(key || "").startsWith("step:")) return String(key).split(":", 2)[1] || "手写补充";
+  if (String(key || "").startsWith("category:")) return cleanPortraitCategoryName(String(key).split(":", 2)[1]);
+  return portraitSlotById(key)?.label || key;
+}
+
+function portraitStepSubtitle(step) {
+  if (step.final) return portraitCanGenerate() ? "可以生成" : "补充想法";
+  const selected = Object.values(state.portraitSelected)
+    .flat()
+    .filter((item) => item.category === step.category?.name)
+    .length;
+  const manual = state.portraitManual[stepManualKey(step)]?.trim();
+  if (selected || manual) return selected ? `已选 ${selected}` : "已手写";
+  return `${Number(step.category?.count || 0)} 张`;
+}
+
+function portraitStepDone(step) {
+  if (step.final) return Boolean(state.portraitManual.global?.trim() || state.portraitBasePrompt.trim());
+  return portraitStepSubtitle(step).startsWith("已");
+}
+
+function syncPortraitGlobalIdea(event) {
+  state.portraitManual.global = event.currentTarget.value;
+  syncPortraitInputs();
+}
+
+function syncPortraitBasePrompt(event) {
+  state.portraitBasePrompt = event.currentTarget.value;
+  syncPortraitInputs();
+}
+
+function syncPortraitInputs() {
+  if ($("portraitGlobalIdeaInput")) $("portraitGlobalIdeaInput").value = state.portraitManual.global || "";
+  if ($("portraitBasePromptInput")) $("portraitBasePromptInput").value = state.portraitBasePrompt || "";
+  if ($("portraitStepGlobalInput")) $("portraitStepGlobalInput").value = state.portraitManual.global || "";
+  if ($("portraitStepBasePromptInput")) $("portraitStepBasePromptInput").value = state.portraitBasePrompt || "";
+  $("portraitGenerateButton").disabled = !portraitCanGenerate() || state.portraitLoading;
+  document.querySelectorAll("[data-portrait-inline-generate]").forEach((button) => {
+    button.disabled = !portraitCanGenerate() || state.portraitLoading;
+  });
+  renderTitle();
+}
+
 function openRewriteDrawer(promptId) {
+  showToast("翻译和改写已下线，请手动编辑提示词","info");return;
   const prompt = state.prompts.find((item) => item.id === promptId);
   if (!prompt) return;
+  $("rewriteDrawer").dataset.mode = "rewrite";
+  $("rewriteDrawerTitle").textContent = "AI 改写提示词";
   state.rewritingPromptId = promptId;
   $("rewritePromptTitle").textContent = prompt.title || "提示词";
   $("rewritePromptPreview").textContent = prompt.content || "";
@@ -1316,8 +3395,7 @@ function renderRewriteResults(candidates) {
   $("rewriteResults").querySelectorAll("[data-copy-rewrite]").forEach((button) => {
     button.addEventListener("click", async () => {
       const text = state.rewriteCandidates[Number(button.dataset.copyRewrite)] || "";
-      await navigator.clipboard.writeText(text);
-      button.textContent = "已复制";
+      await copyText(text, button);
     });
   });
   $("rewriteResults").querySelectorAll("[data-translate-rewrite]").forEach((button) => {
@@ -1364,6 +3442,7 @@ async function autoTranslateEnglishCandidates(candidates) {
 }
 
 async function translateRewriteCandidate(index, button) {
+  showToast("翻译和改写已下线，请手动编辑提示词","info");return;
   const prompt = state.rewriteCandidates[index] || "";
   if (!prompt) return;
   const oldText = button?.textContent || "翻译";
@@ -1445,6 +3524,7 @@ function openAgentDrawer(promptId) {
   if (!prompt) return;
   state.agentPromptId = promptId;
   state.agentAnalysis = null;
+  state.agentEdits = [];
   state.agentResult = null;
   state.agentParentVariantId = "";
   state.agentRoundIndex = 0;
@@ -1452,7 +3532,7 @@ function openAgentDrawer(promptId) {
   $("agentPromptTitle").textContent = prompt.title || "提示词";
   $("agentPromptPreview").textContent = prompt.content || "";
   $("agentInstructionInput").value = "";
-  $("agentInstructionLabel").textContent = "修改要求";
+  $("agentInstructionLabel").textContent = "其他补充";
   $("agentAnalysis").innerHTML = "";
   $("agentResult").innerHTML = "";
   setAgentStatus("");
@@ -1471,7 +3551,7 @@ async function runAgentAnalyze() {
   const prompt = state.prompts.find((item) => item.id === state.agentPromptId);
   if (!prompt) return;
   $("agentAnalyzeButton").disabled = true;
-  setAgentStatus("正在拆解提示词结构...");
+  setAgentStatus("正在翻译并识别可修改项...");
   $("agentAnalysis").innerHTML = "";
   try {
     const { analysis } = await api("/api/prompt-agent/analyze", {
@@ -1483,9 +3563,11 @@ async function runAgentAnalyze() {
       }),
     });
     state.agentAnalysis = analysis;
+    state.agentEdits = buildAgentEdits(analysis);
     renderAgentAnalysis();
-    setAgentStatus("拆解完成，可以写修改要求了。", "info");
-    $("agentInstructionInput").focus();
+    setAgentStatus("识别完成。点建议或填写新值；默认保留项如果想改，也可以直接填。", "info");
+    const firstInput = $("agentAnalysis").querySelector("[data-agent-edit]");
+    (firstInput || $("agentInstructionInput")).focus();
   } catch (error) {
     setAgentStatus(error.message, "error");
   } finally {
@@ -1495,20 +3577,22 @@ async function runAgentAnalyze() {
 
 async function runAgentGenerate() {
   const prompt = state.prompts.find((item) => item.id === state.agentPromptId);
-  const instruction = $("agentInstructionInput").value.trim();
+  const extraInstruction = $("agentInstructionInput").value.trim();
+  const edits = collectAgentEdits();
+  const instruction = agentInstructionSummary(edits, extraInstruction);
   if (!prompt) return;
   if (!state.agentAnalysis) {
-    setAgentStatus("先点一次“开始拆解”，让 AI 看懂原提示词。", "error");
+    setAgentStatus("先点一次“识别可修改项”，让 AI 看懂原提示词。", "error");
     return;
   }
   if (!instruction) {
-    setAgentStatus("先写一下你想修改什么。", "error");
+    setAgentStatus("至少填写一个新值，或写一条其他补充。", "error");
     return;
   }
   const isRefine = Boolean(state.agentResult?.prompt_en);
   $("agentGenerateButton").disabled = true;
   $("agentResult").innerHTML = "";
-  setAgentStatus(isRefine ? "正在基于当前结果继续微调..." : "正在生成 1 条完整提示词...");
+  setAgentStatus(isRefine ? "正在基于当前结果继续局部微调..." : "正在生成 1 条完整提示词...");
   try {
     const endpoint = isRefine ? "/api/prompt-agent/refine" : "/api/prompt-agent/generate";
     const body = isRefine
@@ -1523,6 +3607,8 @@ async function runAgentGenerate() {
           prompt: prompt.content,
           analysis: state.agentAnalysis,
           instruction,
+          edits,
+          extra_instruction: extraInstruction,
           model: $("agentModelInput").value,
         };
     const { result, model } = await api(endpoint, {
@@ -1533,9 +3619,7 @@ async function runAgentGenerate() {
     state.agentResult = { ...result, model_id: model, instruction };
     state.agentRoundIndex += 1;
     renderAgentResult();
-    $("agentInstructionInput").value = "";
-    $("agentInstructionLabel").textContent = "继续修改";
-    setAgentStatus("已生成，可以复制、保存，或继续基于这条微调。", "info");
+    setAgentStatus("已生成英文新提示词，并附中文翻译。可以复制、保存，或继续调整。", "info");
   } catch (error) {
     setAgentStatus(error.message, "error");
   } finally {
@@ -1548,15 +3632,142 @@ function renderAgentAnalysis() {
   if (!analysis) return;
   $("agentAnalysis").innerHTML = `
     <section class="analysis-card">
-      <div class="analysis-kicker">${escapeHtml(analysis.prompt_type || "其他")}</div>
-      <strong>${escapeHtml(analysis.core_image || "")}</strong>
-      ${analysisPointSection("核心不变点", analysis.core_points)}
-      ${analysisPointSection("可修改点", analysis.editable_points, true)}
-      ${analysisTextSection("建议保留", analysis.keep_points)}
-      ${analysisTextSection("不建议轻易改", analysis.avoid_changes)}
-      <p class="agent-guide">${escapeHtml(analysis.guide || "")}</p>
+      <div class="analysis-kicker">${escapeHtml(analysis.prompt_type || "提示词")}</div>
+      <strong>${escapeHtml(analysis.summary || analysis.core_image || "")}</strong>
+      ${analysis.translation_cn ? `
+        <div class="prompt-translation">
+          <span>中文翻译</span>
+          <p>${escapeHtml(analysis.translation_cn)}</p>
+        </div>
+      ` : ""}
+      ${renderAgentEditList()}
+      <p class="agent-guide">${escapeHtml(analysis.guide || "只改你想改的地方，默认保留项不填就保持原样，想改也可以填。")}</p>
     </section>
   `;
+  bindAgentEditInputs();
+}
+
+function buildAgentEdits(analysis = {}) {
+  const editable = (analysis.editable_items || []).map((item) => ({
+    ...item,
+    value: "",
+    locked: false,
+    suggestions: uniqueStrings(item.suggestions || []).slice(0, 5),
+  }));
+  const locked = (analysis.locked_context || [])
+    .map((text, index) => String(text || "").trim() ? ({
+      id: `locked_context_${index + 1}`,
+      label: "默认保留",
+      original: String(text || "").trim(),
+      placeholder: "想改就写新方向，不填继续保留",
+      suggestions: ["弱化一点", "换成更自然", "删除这类词", "改成更高级"],
+      value: "",
+      locked: true,
+    }) : null)
+    .filter(Boolean);
+  return [...editable, ...locked];
+}
+
+function uniqueStrings(values = []) {
+  const seen = new Set();
+  return values.map((item) => String(item || "").trim()).filter((item) => {
+    if (!item || seen.has(item)) return false;
+    seen.add(item);
+    return true;
+  });
+}
+
+function renderAgentEditList() {
+  const items = state.agentEdits || [];
+  if (!items.length) {
+    return `<div class="empty-state compact-empty">没有识别到明确可修改项，可以直接在“其他补充”里描述想法。</div>`;
+  }
+  const editableRows = items.map((item, index) => ({ ...item, index })).filter((item) => !item.locked);
+  const lockedRows = items.map((item, index) => ({ ...item, index })).filter((item) => item.locked);
+  return `
+    <div class="agent-edit-list">
+      ${renderAgentEditGroup("局部修改", "点建议会自动填入；留空保持原样", editableRows)}
+      ${lockedRows.length ? renderAgentEditGroup("默认保留，也可改", "这些默认不动；想改哪条就填哪条", lockedRows) : ""}
+    </div>
+  `;
+}
+
+function renderAgentEditGroup(title, hint, items) {
+  if (!items.length) return "";
+  return `
+    <div class="agent-edit-group">
+      <div class="agent-edit-head">
+        <span>${escapeHtml(title)}</span>
+        <small>${escapeHtml(hint)}</small>
+      </div>
+      ${items.map((item) => `
+        <div class="agent-edit-row ${item.locked ? "is-locked" : ""}">
+          <span class="agent-edit-label">${escapeHtml(item.label || "可修改项")}</span>
+          <span class="agent-original">${escapeHtml(item.original || "未识别")}</span>
+          <div class="agent-edit-control">
+            <input
+              type="text"
+              data-agent-edit="${item.index}"
+              value="${escapeAttr(item.value || "")}"
+              placeholder="${escapeAttr(item.placeholder || "保持原样")}"
+              aria-label="${escapeAttr(item.label || "可修改项")}"
+            />
+            ${item.suggestions?.length ? `
+              <div class="agent-suggestions">
+                ${item.suggestions.map((suggestion) => `
+                  <button
+                    class="suggestion-chip"
+                    type="button"
+                    data-agent-suggestion="${item.index}"
+                    data-suggestion-value="${escapeAttr(suggestion)}"
+                  >${escapeHtml(suggestion)}</button>
+                `).join("")}
+              </div>
+            ` : ""}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function bindAgentEditInputs() {
+  $("agentAnalysis").querySelectorAll("[data-agent-edit]").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      const index = Number(event.currentTarget.dataset.agentEdit);
+      if (state.agentEdits[index]) {
+        state.agentEdits[index].value = event.currentTarget.value;
+      }
+    });
+  });
+  $("agentAnalysis").querySelectorAll("[data-agent-suggestion]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      const index = Number(event.currentTarget.dataset.agentSuggestion);
+      const value = event.currentTarget.dataset.suggestionValue || "";
+      if (!state.agentEdits[index]) return;
+      state.agentEdits[index].value = value;
+      const input = $("agentAnalysis").querySelector(`[data-agent-edit="${index}"]`);
+      if (input) {
+        input.value = value;
+        input.focus();
+      }
+    });
+  });
+}
+
+function collectAgentEdits() {
+  return (state.agentEdits || []).map((item) => ({
+    id: item.id || "",
+    label: item.label || "可修改项",
+    original: item.original || "",
+    value: (item.value || "").trim(),
+  })).filter((item) => item.value);
+}
+
+function agentInstructionSummary(edits, extraInstruction = "") {
+  const parts = edits.map((item) => `${item.label}：${item.original || "原值"} -> ${item.value}`);
+  if (extraInstruction.trim()) parts.push(`其他补充：${extraInstruction.trim()}`);
+  return parts.join("\n");
 }
 
 function analysisPointSection(title, points = [], showSuggestions = false) {
@@ -1613,8 +3824,7 @@ function renderAgentResult() {
     </article>
   `;
   $("agentResult").querySelector("[data-copy-agent-result]").addEventListener("click", async (event) => {
-    await navigator.clipboard.writeText(state.agentResult?.prompt_en || "");
-    event.currentTarget.textContent = "已复制";
+    await copyText(state.agentResult?.prompt_en || "", event.currentTarget);
   });
   $("agentResult").querySelector("[data-save-agent-result]").addEventListener("click", (event) => saveAgentResult(event.currentTarget));
   $("agentResult").querySelector("[data-focus-agent-refine]").addEventListener("click", () => {
@@ -1694,7 +3904,7 @@ function recordRow(task) {
       ${thumb}
       <span>
         <strong>${escapeHtml(task.app_name)}</strong>
-        <small>${formatTime(task.created_at)}</small>
+        <small><span class="provider-badge ${escapeAttr(task.provider || "runninghub")}">${providerLabel(task.provider)}</span> ${formatTime(task.created_at)}${task.provider === "runpod" && task.status === "running" ? ` · ${escapeHtml(runpodStageLabel(task))}` : ""}</small>
       </span>
       <em class="${task.status}">${shortStatus(task.status)}</em>
     </button>
@@ -1708,6 +3918,12 @@ function renderResult() {
     $("resultView").innerHTML = "暂无结果";
     return;
   }
+  if (task.is_summary) {
+    $("resultView").className = "result-view empty-state";
+    $("resultView").innerHTML = "正在读取详情";
+    loadTaskDetail(task.id);
+    return;
+  }
   if (task.status === "queued" || task.status === "running") {
     $("resultView").className = "result-view";
     $("resultView").innerHTML = `
@@ -1717,29 +3933,32 @@ function renderResult() {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
           <span class="pending-preview">生成中</span>
         </div>
-        <p>正在调用 NAS 接口</p>
+        <p>${escapeHtml(task.provider === "runpod" ? runpodStageLabel(task) : "正在调用 RunningHub")}</p>
         <div class="progress-line"><span></span></div>
       </div>
+      ${taskRemoteCard(task)}
     `;
     return;
   }
-  if (task.status === "failed") {
+  if (task.status === "failed" || task.status === "cancelled") {
     $("resultView").className = "result-view";
     $("resultView").innerHTML = `
-      <div class="notice">${escapeHtml(task.error || "任务失败")}</div>
+      <div class="notice">${escapeHtml(task.error || (task.status === "cancelled" ? "已取消排队，原输入与记录仍保留。" : "任务失败"))}</div>
+      ${taskRemoteCard(task)}
       <div class="action-grid">
-        <button class="secondary-button" type="button" data-action="retry" data-task-id="${task.id}">重试</button>
-        <button class="danger-button" type="button" data-action="delete" data-task-id="${task.id}">删除</button>
+        ${task.remote_submission_state === "unknown" ? "" : `<button class="secondary-button" type="button" data-action="retry" data-task-id="${task.id}">重试</button>`}
+        ${task.remote_submission_state === "unknown" ? "" : `<button class="danger-button" type="button" data-action="delete" data-task-id="${task.id}">删除</button>`}
       </div>
       ${taskSettingsCard(task)}
     `;
     bindTaskActions();
     return;
   }
-  const images = task.outputs.filter((item) => isVisibleImageOutput(item));
-  const packages = task.outputs.filter((item) => !item.deleted && item.type === "zip");
+  const images = (task.outputs || []).filter((item) => isVisibleImageOutput(item));
+  const packages = (task.outputs || []).filter((item) => !item.deleted && item.type === "zip");
   $("resultView").className = "result-view";
   $("resultView").innerHTML = `
+    ${taskRemoteCard(task)}
     <div class="result-gallery">
       ${images.length ? images.map((item) => `
         <figure class="result-image ${item.blurred ? "blurred" : ""}">
@@ -1750,6 +3969,7 @@ function renderResult() {
             </button>
             <button class="tiny-button danger" type="button" data-delete-output="${escapeAttr(task.id)}" data-output-path="${escapeAttr(item.path)}">删除</button>
           </div>
+          ${HuashiCreation.imageActions(item.path, item.download_name, previewUrl(item))}
         </figure>
       `).join("") : `<div class="empty-state">暂无预览</div>`}
     </div>
@@ -1762,6 +3982,47 @@ function renderResult() {
     ${taskSettingsCard(task)}
   `;
   bindTaskActions();
+}
+
+function providerLabel(provider) {
+  return provider === "runpod" ? "RunPod" : "RunningHub";
+}
+
+function runpodStageLabel(task) {
+  return {
+    queue_waiting: "已加入队列，等待前面的任务",
+    recovery_wait: "正在恢复原任务查询，后续任务等待",
+    cancelled: "已取消排队",
+    preparing: "正在准备输入",
+    checking_network: "正在检查 RunPod 网络",
+    submitting: "正在提交 RunPod（结果尚未确认）",
+    waiting_worker: "等待 Worker",
+    remote_running: "RunPod 运行中",
+    fetching_result: "正在获取结果",
+    completed: "完成",
+    submission_unknown: "提交结果未知",
+    failed: "失败",
+  }[task.stage] || (task.status === "queued" ? "已创建" : "正在查询 RunPod 状态");
+}
+
+function taskRemoteCard(task) {
+  const submitted = task.remote_submission_state === "submitted" ? "已确认提交" : task.remote_submission_state === "unknown" ? "提交结果未知" : "尚未提交";
+  const rows = [
+    ["来源", providerLabel(task.provider)],
+    ["经过时间", elapsedTime(task.created_at, task.completed_at)],
+  ];
+  if (task.provider === "runpod") {
+    rows.push(["阶段", runpodStageLabel(task)], ["远端提交", submitted]);
+    if (task.runpod_job_id) rows.push(["RunPod Job ID", task.runpod_job_id]);
+    if (task.remote_status) rows.push(["远端状态", task.remote_status]);
+  }
+  return `<dl class="task-remote-card">${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>`;
+}
+
+function elapsedTime(start, end) {
+  const elapsed = Math.max(0, Math.floor((new Date(end || Date.now()) - new Date(start)) / 1000));
+  if (!Number.isFinite(elapsed)) return "—";
+  return elapsed < 60 ? `${elapsed} 秒` : elapsed < 3600 ? `${Math.floor(elapsed / 60)} 分 ${elapsed % 60} 秒` : `${Math.floor(elapsed / 3600)} 小时 ${Math.floor((elapsed % 3600) / 60)} 分`;
 }
 
 function taskSettingsCard(task) {
@@ -1808,7 +4069,7 @@ function taskSettingRows(task) {
     if (input.type === "hidden") return;
     const value = values[input.id];
     if (input.role === "prompt" && String(value || "").trim() === String(task.prompt || "").trim()) return;
-    const label = input.role === "prompt" ? "提示词" : (input.label || input.fieldName || input.id);
+    const label = input.id === "negative_prompt" ? (input.label || "负向提示词") : (input.role === "prompt" ? "提示词" : (input.label || input.fieldName || input.id));
     if (input.type === "image" || input.type === "file") {
       const file = files[input.id];
       if (file?.name || file?.path) rows.push({ label, value: file.name || file.path });
@@ -1855,18 +4116,60 @@ function downloadButton(images, packages) {
 }
 
 function taskThumb(task) {
-  const image = task.outputs.find((item) => isVisibleImageOutput(item));
-  if (image) return `<img class="record-thumb ${image.blurred ? "is-blurred" : ""}" src="${image.url}" alt="">`;
-  if (task.input_url) return `<img class="record-thumb" src="${task.input_url}" alt="">`;
+  const image = (task.outputs || []).find((item) => isVisibleImageOutput(item));
+  if (image) return `<img class="record-thumb ${image.blurred ? "is-blurred" : ""}" src="${escapeAttr(previewUrl(image))}" alt="">`;
+  if (task.input_url) return `<img class="record-thumb" src="${escapeAttr(task.input_thumb_url || task.input_url)}" alt="">`;
   return `<span class="record-thumb"></span>`;
 }
 
+async function restoreTaskToCompose(taskId) {
+  // History lists contain summaries; always restore the saved, complete inputs.
+  const { task } = await api(`/api/tasks/${encodeURIComponent(taskId)}`);
+  const app = state.apps.find((item) => item.id === task.app_id && item.enabled !== false);
+  if (!app) throw new Error("原画布已下架或不可用，无法恢复这条记录。");
+  const inputs = appInputs(app);
+  const values = task.input_payload?.values || {};
+  const files = { ...(task.input_payload?.files || {}) };
+  // Older records only stored their first image and prompt at the task level.
+  if (!Object.keys(files).length && task.input_path) {
+    const firstImage = inputs.find((input) => ["image", "file"].includes(input.type));
+    if (firstImage) files[firstImage.id] = { path: task.input_path, name: task.input_name };
+  }
+  state.selectedAppId = app.id;
+  state.pendingComposePrompt = "";
+  // Rebuild even the same canvas so previous drafts and uploads cannot leak in.
+  delete $("dynamicInputs").dataset.appId;
+  setView("compose");
+  const form = $("createTaskForm");
+  const promptId = appPromptInput(app)?.id;
+  inputs.forEach((input) => {
+    const field = form.querySelector(`[name="${CSS.escape(`input_${input.id}`)}"]`);
+    if (!field) return;
+    if (["image", "file"].includes(input.type)) {
+      const file = files[input.id];
+      if (!file?.path) return;
+      const artwork = form.querySelector(`[data-artwork-input="${CSS.escape(input.id)}"]`);
+      if (artwork) artwork.value = file.path;
+      showInputPreview(input.id, `/files/${file.path.split("/").map(encodeURIComponent).join("/")}`);
+      const label = form.querySelector(`[data-file-label="${CSS.escape(input.id)}"]`);
+      if (label) label.textContent = `原图：${file.name || file.path.split("/").pop()}`;
+      return;
+    }
+    const value = Object.hasOwn(values, input.id) ? values[input.id] : input.id === promptId ? task.prompt : undefined;
+    if (value === undefined || value === null) return;
+    if (input.type === "checkbox") field.checked = truthy(value);
+    else field.value = String(value);
+  });
+  updateGenerateState();
+  setNotice("已恢复原记录的图片、提示词和参数，可换图或微调后点击开始生成。");
+}
+
 function bindTaskActions() {
+  bindCreationImages($("resultView"));
   document.querySelectorAll("[data-copy-task-prompt]").forEach((button) => {
     button.addEventListener("click", async () => {
       const task = state.tasks.find((item) => item.id === button.dataset.copyTaskPrompt);
-      await navigator.clipboard.writeText(task?.prompt || "");
-      button.textContent = "已复制";
+      await copyText(task?.prompt || "", button);
     });
   });
   document.querySelectorAll("[data-save-task-prompt]").forEach((button) => {
@@ -1888,9 +4191,10 @@ function bindTaskActions() {
           setNotice("已保存。");
         }
         if (button.dataset.action === "retry") {
-          const { task } = await api(`/api/tasks/${taskId}/retry`, { method: "POST" });
-          state.selectedTaskId = task.id;
-          setView("result");
+          button.disabled = true;
+          try { await restoreTaskToCompose(taskId); }
+          finally { button.disabled = false; }
+          return;
         }
         if (button.dataset.action === "delete") {
           if (!confirm("删除这条记录？")) return;
@@ -1932,6 +4236,9 @@ async function toggleOutputBlur(button) {
       body: JSON.stringify({ path, blurred: !output.blurred }),
     });
     state.tasks = state.tasks.map((item) => item.id === task.id ? task : item);
+    // A privacy action must not leave its image queued for a later batch deletion.
+    (state.albumItems || []).filter(item => item.task_id === taskId && item.output_path === path)
+      .forEach(item => state.gallerySelected.delete(item.id));
     await refreshAlbumItems();
     renderResult();
     renderGallery();
@@ -1940,36 +4247,63 @@ async function toggleOutputBlur(button) {
   }
 }
 
-async function createAlbumFolder() {
-  const name = prompt("新文件夹名称");
-  if (!name || !name.trim()) return;
-  try {
-    const { folder } = await api("/api/albums", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim() }),
-    });
-    state.selectedAlbumId = folder.id;
-    await refreshAlbums();
-    render();
-  } catch (error) {
-    setNotice(error.message, "error");
-  }
+function createAlbumFolder() {
+  HuashiAlbums.createFolder({api,folders:state.albums,toast:showToast,onCreated:async folder=>{
+    state.selectedAlbumId=folder.id;state.galleryPage=0;state.gallerySelected.clear();
+    await refreshAlbums();render();
+  }});
 }
 
-async function uploadAlbumImage(input) {
+function renderGallerySelection() {
+  const bar=$('gallerySelection'),folder=currentAlbum();
+  bar.hidden=Boolean(state.albumLoading || folder?.virtual || folder?.placeholder);
+  if(bar.hidden)return;
+  const items=artworkItems();
+  for(const id of state.gallerySelected)if(!items.some(item=>item.id===id))state.gallerySelected.delete(id);
+  bar.innerHTML=`<span>已选 ${state.gallerySelected.size} 张</span><button type="button" class="tiny-button" data-select-gallery-all>全选</button><button type="button" class="tiny-button" data-select-gallery-page>选择本页</button><button type="button" class="tiny-button" data-clear-gallery-selection>取消选择</button><label class="gallery-page-size">每页<select aria-label="每页图片数量">${[20,50,100].map(n=>`<option value="${n}" ${n===state.galleryPageSize?'selected':''}>${n} 张</option>`).join('')}</select></label><button type="button" class="secondary-button" id="moveSelectedImages" ${state.gallerySelected.size?'':'disabled'}>移动到分类</button><button type="button" class="tiny-button danger" id="deleteSelectedImages" ${state.gallerySelected.size?'':'disabled'}>删除</button>`;
+  bar.querySelector('[data-select-gallery-all]').onclick=()=>{items.forEach(item=>state.gallerySelected.add(item.id));renderGallery();};
+  bar.querySelector('[data-select-gallery-page]').onclick=()=>{items.slice(state.galleryPage*state.galleryPageSize,(state.galleryPage+1)*state.galleryPageSize).forEach(item=>state.gallerySelected.add(item.id));renderGallery();};
+  bar.querySelector('[data-clear-gallery-selection]').onclick=()=>{state.gallerySelected.clear();renderGallery();};
+  bar.querySelector('select').onchange=event=>{state.galleryPageSize=Number(event.target.value);state.galleryPage=0;state.galleryViewerOpen=false;renderGallery();};
+  $('moveSelectedImages').onclick=()=>openAlbumMove(items.filter(item=>state.gallerySelected.has(item.id)));
+  $('deleteSelectedImages').onclick=()=>removeGalleryItems(items.filter(item=>state.gallerySelected.has(item.id)));
+}
+
+function removeGalleryItems(items) {
+  HuashiGallery.remove(items,{api,toast:showToast,onDeleted:async ids=>{
+    ids.forEach(id=>state.gallerySelected.delete(id));
+    state.galleryViewerOpen=false;
+    await refreshAlbums();renderGallery();
+  }});
+}
+
+function openAlbumMove(items, initialTarget='') {
+  HuashiAlbums.move({api,folders:state.albums,toast:showToast,onMoved:async()=>{
+    state.gallerySelected.clear();state.galleryViewerOpen=false;
+    await refreshAlbums();render();
+  }},items,initialTarget);
+}
+
+async function uploadAlbumImage(input, defaultInbox = false) {
   const file = input.files?.[0];
   if (!file) return;
-  if (state.selectedAlbumId === "__pose__") {
+  if (!defaultInbox && HuashiRooms.directoryLibrary(state.selectedAlbumId)) {
     input.value = "";
-    setNotice("POSE 文件夹是只读模板库，不能上传到这里。", "error");
+    setNotice(`${HuashiRooms.directoryLibrary(state.selectedAlbumId).label}是只读参考库，不能上传到这里。`, "error");
+    return;
+  }
+  if (!defaultInbox && state.selectedAlbumId === "__faces__") {
+    input.value = "";
+    setNotice("人脸库是只读参考库，不能在这里直接上传。", "error");
     return;
   }
   const formData = new FormData();
-  formData.append("folder_id", state.selectedAlbumId || "works");
+  if (!defaultInbox) formData.append("folder_id", state.selectedAlbumId || "");
   formData.append("image", file);
   try {
-    await api("/api/albums/upload", { method: "POST", body: formData });
+    const {item} = await api("/api/albums/upload", { method: "POST", body: formData });
+    if (defaultInbox) {state.gallerySelected.clear();state.selectedAlbumId=item.folder_id;state.galleryPage=0;state.galleryViewerOpen=false;}
+    showToast(defaultInbox ? "素材已进入待整理" : "已上传到当前分类","info");
     input.value = "";
     await refreshAlbums();
     render();
@@ -1980,21 +4314,8 @@ async function uploadAlbumImage(input) {
 }
 
 async function moveAlbumItem(select) {
-  const itemId = select.dataset.moveAlbumItem;
-  const folderId = select.value;
-  if (!itemId || !folderId) return;
-  try {
-    await api(`/api/albums/items/${itemId}/move`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ folder_id: folderId }),
-    });
-    state.galleryViewerOpen = false;
-    await refreshAlbums();
-    render();
-  } catch (error) {
-    setNotice(error.message, "error");
-  }
+  const item=artworkItems().find(item=>item.id===select.dataset.moveAlbumItem);
+  if(item && select.value!==item.folder_id)openAlbumMove([item],select.value);
 }
 
 async function reorderAlbumItem(button) {
@@ -2033,22 +4354,9 @@ async function positionAlbumItem(itemId, toIndex) {
   }
 }
 
-async function deleteAlbumItem(button) {
-  const itemId = button.dataset.deleteAlbumItem;
-  if (!itemId) return;
-  if (!confirm("从画册移除这张图片？")) return;
-  try {
-    await api(`/api/albums/items/${itemId}/delete`, { method: "POST" });
-    await refreshAlbums();
-    const items = artworkItems();
-    if (!items.length) state.galleryViewerOpen = false;
-    state.galleryIndex = Math.min(state.galleryIndex, Math.max(items.length - 1, 0));
-    renderResult();
-    renderHistory();
-    renderGallery();
-  } catch (error) {
-    setNotice(error.message, "error");
-  }
+function deleteAlbumItem(button) {
+  const item=artworkItems().find(item=>item.id===button.dataset.deleteAlbumItem);
+  if(item)removeGalleryItems([item]);
 }
 
 async function deleteTaskOutput(button) {
@@ -2075,8 +4383,43 @@ async function deleteTaskOutput(button) {
   }
 }
 
+function updateQueueNavigation() {
+  const count=HuashiTaskQueue.model(state.queue||{}).count;
+  document.querySelectorAll('[data-queue-count]').forEach(el=>el.textContent=count?`· ${count}`:'');
+}
+
+async function queueControl(path) {
+  if(state.queueBusy)return;
+  state.queueBusy=true;
+  try {
+    state.queue=await api(path,{method:'POST'});
+    state.queueConfirming=null;state.queueLoadError='';
+    updateQueueNavigation();renderRunPodQueue();managePolling();
+  } catch(error) {showToast(error.message,'error');await loadData().catch(()=>{});}
+  finally {state.queueBusy=false;}
+}
+
+function renderRunPodQueue() {
+  $('queueError').textContent=state.queueLoadError;
+  $('queueError').classList.toggle('hidden',!state.queueLoadError);
+  if(!state.queue){$('runpodQueueView').textContent=state.queueLoadError?'队列暂时无法读取，请稍后刷新。':'正在读取队列…';return;}
+  HuashiTaskQueue.render($('runpodQueueView'),state.queue,{
+    confirming:state.queueConfirming,stage:runpodStageLabel,elapsed:start=>'已加入 '+elapsedTime(start),
+    detail:async id=>{try {const {task}=await api(`/api/tasks/${encodeURIComponent(id)}`);state.tasks=[task,...state.tasks.filter(t=>t.id!==id)];state.selectedTaskId=id;setView('result');}catch(error){showToast(error.message,'error');}},
+    history:filter=>{state.historyFilter=filter;state.historyPage=0;setView('history');},
+    confirm:id=>{state.queueConfirming=id;renderRunPodQueue();},
+    cancel:id=>queueControl(`/api/runpod/queue/${encodeURIComponent(id)}/cancel`),
+    pause:paused=>queueControl('/api/runpod/queue/'+(paused?'pause':'resume')),
+  });
+}
+
+$('queueContinueCompose').addEventListener('click',()=>{
+  if(selectedApp()?.provider!=='runpod') state.selectedAppId=state.queue?.pending?.[0]?.app_id||state.queue?.active?.[0]?.app_id||state.apps.find(a=>a.id==='runpod-noctq-v4-text-to-image')?.id||state.apps.find(a=>a.provider==='runpod')?.id;
+  setView(state.selectedAppId?'compose':'create');
+});
+
 function managePolling() {
-  const hasActive = state.tasks.some((task) => task.status === "queued" || task.status === "running");
+  const hasActive = state.view === "queue" || Boolean(state.queue?.active?.length || state.queue?.pending?.length) || state.tasks.some((task) => task.status === "queued" || task.status === "running");
   if (hasActive && !state.polling) state.polling = setInterval(loadData, 3500);
   if (!hasActive && state.polling) {
     clearInterval(state.polling);
@@ -2092,8 +4435,16 @@ function setNotice(message, kind = "info") {
 }
 
 function coverStyle(app) {
-  if (app.cover_url) return `background-image: url('${escapeAttr(app.cover_url)}')`;
-  return "background-image: url('/default-app-icon.png')";
+  return `background-image: url('${escapeAttr(appVisualUrl(app))}')`;
+}
+
+function appVisualUrl(app = {}) {
+  if (app.provider === "runpod" && !app.icon_path && !app.cover_path) return "/runpod-qwen-icon.svg";
+  return app.icon_thumb_url || app.icon_url || app.cover_thumb_url || app.cover_url || "/default-app-icon.png";
+}
+
+function previewUrl(item = {}) {
+  return item.thumb_url || item.sample_thumb_url || item.input_thumb_url || item.url || item.sample_url || item.input_url || "";
 }
 
 function outputLabel(app) {
@@ -2109,7 +4460,7 @@ function isVisibleImageOutput(item) {
 }
 
 function shortStatus(status) {
-  return { queued: "处理中", running: "处理中", success: "已完成", failed: "失败" }[status] || status;
+  return { queued: "排队中", running: "处理中", success: "已完成", failed: "失败", cancelled: "已取消" }[status] || status;
 }
 
 function formatTime(value) {
@@ -2140,14 +4491,30 @@ $("searchInput").addEventListener("input", (event) => {
   renderStyles();
 });
 
-$("promptSearchInput").addEventListener("input", (event) => {
-  state.promptSearch = event.target.value;
-  renderPrompts();
+document.querySelectorAll("[data-home-provider]").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.homeProvider = button.dataset.homeProvider;
+    state.category = "全部";
+    render();
+  });
 });
 
-$("pickerSearchInput").addEventListener("input", (event) => {
-  state.pickerSearch = event.target.value;
-  renderPromptPicker();
+$("promptDirectoryRetry").addEventListener("click", async () => {try {await loadData();}catch(error){showToast(error.message,"error");}});
+$("managePromptFoldersButton").addEventListener("click", () => {
+  HuashiPromptFolders.manage({api,value:state.promptFolderId,onMutate:loadData,toast:showToast});
+});
+window.matchMedia("(max-width:760px)").addEventListener("change", event => {
+  if (!event.matches) $("promptDirectoryPanel").open = true;
+});
+$("promptSearchAll").addEventListener("change", event => {state.promptAllDirectories = event.target.checked;state.promptPage=0;state.promptSelected.clear();renderPrompts();});
+$("promptSelectMode").addEventListener("click", () => {state.promptSelecting = !state.promptSelecting;state.promptSelected.clear();renderPrompts();});
+$("promptSelectVisible").addEventListener("click", () => {state.promptSelected = new Set(filteredPrompts().map(prompt => prompt.id));renderPrompts();});
+$("promptMoveSelected").addEventListener("click", () => movePromptIds([...state.promptSelected]));
+$("promptSearchInput").addEventListener("input", (event) => {
+  state.promptSearch = event.target.value;
+  state.promptPage=0;
+  state.promptSelected.clear();
+  renderPrompts();
 });
 
 $("categorySelect").addEventListener("change", (event) => {
@@ -2163,26 +4530,39 @@ $("sortSelect")?.addEventListener("change", (event) => {
 $("createTaskForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const app = selectedApp();
-  if (!app) return;
+  if (!app || state.taskSubmitting) return;
   const formData = new FormData(event.currentTarget);
   formData.append("appId", app.id);
-  $("generateButton").disabled = true;
-  setNotice("已提交。");
+  state.taskSubmitting = true;
+  updateGenerateState();
+  setNotice(app.provider === "runpod" ? "正在保存到队列…" : "正在提交…");
   try {
     const { task } = await api("/api/tasks", { method: "POST", body: formData });
     state.selectedTaskId = task.id;
-    $("createTaskForm").reset();
-    setView("result");
-    await loadData();
+    if (app.provider === "runpod") {
+      setNotice("已加入队列。图片与参数已独立保存，可以继续准备下一单。");
+      showToast("已加入队列，可以继续创作。");
+    } else {
+      $("createTaskForm").reset();
+      delete $("dynamicInputs").dataset.appId;
+      setView("result");
+    }
+    await loadData().catch(()=>showToast("任务已保存，状态刷新失败，请打开队列核对。","error"));
   } catch (error) {
-    setNotice(error.message, "error");
+    setNotice(error.message + (app.provider === "runpod" ? "；若网络中断，请先查看队列核对是否已入队，再决定是否提交。" : ""), "error");
   } finally {
+    state.taskSubmitting = false;
     renderCompose();
   }
 });
 
 $("newPromptButton").addEventListener("click", () => openPromptForm());
+$("keepPromptDraftButton").addEventListener("click", () => $("promptDiscardDialog").close());
+$("discardPromptDraftButton").addEventListener("click", () => {$("promptDiscardDialog").close();closePromptForm(true);});
 $("cancelPromptButton").addEventListener("click", closePromptForm);
+$("promptEditorDialog").addEventListener("cancel",event=>{event.preventDefault();closePromptForm();});
+$("choosePromptSampleLibrary")?.addEventListener("click", () => openArtworkPicker("promptSample", "promptSample"));
+$("promptSampleUploadInput")?.addEventListener("change", event => uploadPromptSample(event.currentTarget));
 $("choosePromptSampleButton").addEventListener("click", () => openArtworkPicker("promptSample", "promptSample"));
 $("clearPromptSampleButton").addEventListener("click", () => setPromptSample("", ""));
 
@@ -2195,9 +4575,8 @@ $("promptForm").addEventListener("submit", async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(promptFormPayload()),
     });
-    closePromptForm();
+    closePromptForm(true);
     await loadData();
-    setView("prompts");
   } catch (error) {
     setNotice(error.message, "error");
   }
@@ -2223,7 +4602,43 @@ document.querySelectorAll("[data-close-agent]").forEach((item) => {
 
 $("agentAnalyzeButton").addEventListener("click", runAgentAnalyze);
 $("agentGenerateButton").addEventListener("click", runAgentGenerate);
+$("portraitGenerateButton")?.addEventListener("click", generatePortraitPrompt);
+$("portraitLoadMoreButton")?.addEventListener("click", loadMorePortraitMaterials);
+$("portraitImportToggleButton")?.addEventListener("click", () => {
+  state.portraitImportOpen = !state.portraitImportOpen;
+  renderPortrait();
+});
+$("portraitImportPromptInput")?.addEventListener("input", syncPortraitImportPrompt);
+$("portraitAnalyzePromptButton")?.addEventListener("click", analyzePortraitImportPrompt);
+$("portraitClearImportButton")?.addEventListener("click", clearPortraitImport);
+$("portraitOpenSlotsButton")?.addEventListener("click", () => {
+  state.portraitDrawerOpen = true;
+  renderPortrait();
+});
+$("portraitPrevStepButton")?.addEventListener("click", prevPortraitStep);
+$("portraitNextStepButton")?.addEventListener("click", nextPortraitStep);
+$("portraitGlobalIdeaInput")?.addEventListener("input", syncPortraitGlobalIdea);
+$("portraitBasePromptInput")?.addEventListener("input", syncPortraitBasePrompt);
+$("portraitChooseBasePromptButton")?.addEventListener("click", () => openPromptPicker("portraitBasePrompt"));
+$("portraitSearchInput")?.addEventListener("input", (event) => {
+  state.portraitQuery = event.currentTarget.value;
+  reloadPortraitMaterials();
+});
+$("portraitMobileSearchInput")?.addEventListener("input", (event) => {
+  state.portraitQuery = event.currentTarget.value;
+  reloadPortraitMaterials();
+});
+document.querySelectorAll("[data-close-portrait-slots]").forEach((item) => {
+  item.addEventListener("click", () => {
+    state.portraitDrawerOpen = false;
+    renderPortrait();
+  });
+});
+document.querySelectorAll("[data-prompt-section]").forEach((button) => {
+  button.addEventListener("click", () => setPromptSection(button.dataset.promptSection || ""));
+});
 $("newAlbumFolderButton")?.addEventListener("click", createAlbumFolder);
+$("inboxUploadInput")?.addEventListener("change", event => uploadAlbumImage(event.currentTarget, true));
 $("albumUploadInput")?.addEventListener("change", (event) => uploadAlbumImage(event.currentTarget));
 
 document.querySelectorAll("[data-nav-view]").forEach((button) => {
@@ -2235,24 +4650,111 @@ document.querySelectorAll("[data-history-filter]").forEach((button) => {
     document.querySelectorAll("[data-history-filter]").forEach((item) => item.classList.remove("active"));
     button.classList.add("active");
     state.historyFilter = button.dataset.historyFilter;
+    state.historyPage = 0;
     render();
   });
 });
 
 $("backButton").addEventListener("click", () => {
-  if (state.view === "compose") setView("home");
-  else if (state.view === "result") setView("history");
-  else if (state.view === "gallery" && state.galleryFolderOpen) {
-    state.galleryFolderOpen = false;
-    state.galleryViewerOpen = false;
-    render();
+  if (state.view === 'inspiration') {
+    const r=state.inspirationRoute || HuashiInspirationNav.parse('#inspiration');
+    setView(r.entryId ? HuashiInspirationNav.format({...r,entryId:''}) : r.view==='home' ? 'home' : r.collection==='code' ? 'inspiration/animation' : 'inspiration');
   }
+  else if (state.view === "prompts" && state.promptSection) {
+    setView(state.promptSection === "portrait" ? "inspiration/prompts" : "inspiration");
+  }
+  else if (state.view === "compose") setView("create");
+  else if (state.view === "result") setView("history");
   else setView("home");
 });
 
+$("clearPendingInspiration")?.addEventListener("click", () => { state.pendingComposePrompt = ""; render(); });
+$("gridSizeInput")?.addEventListener("input", (event) => { state.galleryColumns = Number(event.currentTarget.value); renderGallery(); });
+HuashiRooms.inspirationState.kind = initialRoute.kind || "";
 window.addEventListener("hashchange", () => {
-  state.view = initialView();
-  render();
+  const route = HuashiRooms.parseRoute(window.location.hash);
+  if(route.kind)HuashiRooms.inspirationState.kind = route.kind;
+  setView(window.location.hash.replace("#", ""), {historyMode:"none"});
 });
+document.addEventListener("error", (event) => {
+  if (event.target instanceof HTMLImageElement && event.target.closest(".photo-tile, .artwork-choice, .room-search-image")) {
+    event.target.classList.add("is-missing");
+  }
+}, true);
+$("createTaskForm").addEventListener("invalid", (event) => {
+  const advanced = event.target.closest(".room-advanced");
+  if (advanced) advanced.open = true;
+}, true);
+document.addEventListener("keydown", (event) => {
+  if (document.querySelector("dialog[open]")) return;
+  if (!$('inspirationDetail').open) {
+    const drawer=[$('promptPicker'),$('artworkPicker')].find(element=>!element.classList.contains('hidden'));
+    if(drawer) {
+      if(event.key==='Escape'){event.preventDefault();drawer.id==='promptPicker'?closePromptPicker():closeArtworkPicker();return;}
+      if(event.key==='Tab'){
+        const focusable=Array.from(drawer.querySelectorAll('button:not([disabled]),input:not([disabled]),a[href],select')).filter(element=>element.getClientRects().length);
+        const first=focusable[0],last=focusable.at(-1);
+        if(event.shiftKey && (document.activeElement===first || !drawer.contains(document.activeElement))){event.preventDefault();last?.focus();}
+        else if(!event.shiftKey && (document.activeElement===last || !drawer.contains(document.activeElement))){event.preventDefault();first?.focus();}
+      }
+      return;
+    }
+  }
+  if (state.view !== "gallery" || !state.galleryViewerOpen) return;
+  if(event.key==='Tab') {
+    const viewer=document.querySelector('.photo-viewer');
+    const focusable=[...viewer.querySelectorAll('button:not([disabled]),select,summary')].filter(el=>el.getClientRects().length);
+    const first=focusable[0],last=focusable.at(-1);
+    if(event.shiftKey && (document.activeElement===first || !viewer.contains(document.activeElement))){event.preventDefault();last?.focus();}
+    else if(!event.shiftKey && (document.activeElement===last || !viewer.contains(document.activeElement))){event.preventDefault();first?.focus();}
+    return;
+  }
+  if(/INPUT|TEXTAREA|SELECT/.test(event.target.tagName))return;
+  if (event.key === "Escape") { state.galleryViewerOpen = false; renderGallery(); }
+  else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+    event.preventDefault();
+    const count = artworkItems().length;
+    if (!count) return;
+    state.galleryIndex = (state.galleryIndex + (event.key === "ArrowLeft" ? -1 : 1) + count) % count;
+    state.galleryZoom = 1;
+    renderGallery();
+  }
+});
+render();
 
 loadData().catch((error) => setNotice(error.message, "error"));
+
+function bindCreationImages(root) {
+  root?.querySelectorAll('[data-send-image]').forEach(button => {
+    button.onclick = () => {
+      const image = {path:button.dataset.imagePath, name:button.dataset.imageName};
+      const apps = state.apps.filter(app => appInputs(app).some(input => ['image','file'].includes(input.type)));
+      const send = appId => {
+        const app = apps.find(app => app.id === appId);
+        const input = app && appInputs(app).find(input => ['image','file'].includes(input.type));
+        if (!input) {showToast('暂时没有可用的对应编辑画布','error');return;}
+        state.selectedAppId=app.id; setView('compose');
+        const form=$('createTaskForm');
+        const field=form.querySelector(`[data-artwork-input="${CSS.escape(input.id)}"]`);
+        if (!field) {showToast('当前画布无法接收这张图片','error');return;}
+        field.value=image.path;
+        showInputPreview(input.id,button.dataset.imagePreview);
+        form.querySelectorAll(`[data-file-input="${CSS.escape(input.id)}"]`).forEach(file => file.value='');
+        const label=form.querySelector(`[data-file-label="${CSS.escape(input.id)}"]`);
+        if(label)label.textContent=`陈列室：${image.name || image.path.split('/').pop()}`;
+        updateGenerateState();
+        showToast(button.dataset.sendImage==='double' ? '已带入第一张图片，请选择第二张' : '图片已带入创作画布','info');
+      };
+      if (['reference','choose'].includes(button.dataset.sendImage)) HuashiCreation.chooseCanvas(apps,send);
+      else send(button.dataset.sendImage==='single' ? 'runpod-qwen21-single-image-edit' : 'runpod-qwen21-two-image-edit');
+    };
+  });
+}
+
+function showInputPreview(key, url) {
+  const preview = $('createTaskForm').querySelector(`[data-input-preview="${CSS.escape(key)}"]`);
+  if (!preview) return;
+  const safe = typeof url === 'string' && url.startsWith('/') && !url.startsWith('//');
+  preview.hidden = !safe;
+  if (safe) preview.src=url; else preview.removeAttribute('src');
+}

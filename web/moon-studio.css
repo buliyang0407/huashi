@@ -1,0 +1,275 @@
+/* 月白 · 茄紫. Presentation only; existing workflows, selectors and payloads remain authoritative. */
+:root {
+ --canvas:#f8f6fa; --ink:#302a36; --ink-soft:#574c60; --muted:#716977;
+ --line:#e5dfe9; --line-strong:#ddd6e2; --soft:#f0ebf3; --surface:#fff; --surface-2:#fbf9fc;
+ --accent:#584565; --accent-2:#796789; --accent-ink:#493755; --accent-wash:#eae3f0;
+ --shadow-sm:0 3px 12px #302a3605; --shadow:0 16px 48px #302a3612; --shadow-lg:0 24px 70px #302a3624;
+}
+body,body:has(.screen.active[data-screen]) {background:var(--canvas);color:var(--ink);font-family:"PingFang SC","Microsoft YaHei",-apple-system,BlinkMacSystemFont,sans-serif;}
+button,input,textarea,select {font-family:inherit;}
+button,a,input,textarea,select,summary { -webkit-tap-highlight-color:transparent; }
+:focus-visible {outline:2px solid var(--accent);outline-offset:3px;}
+body .rooms-shell.phone-shell,
+body .rooms-shell.phone-shell:has(.screen.active:is([data-screen="inspiration"],[data-screen="prompts"],[data-screen="portrait"])) {max-width:1560px;padding:104px 40px 40px;}
+body .rooms-shell.phone-shell .studio-nav {height:72px;min-height:72px;padding:0 max(40px,calc((100vw - 1480px)/2));background:#fdfbfe;border-color:var(--line);backdrop-filter:none;justify-content:flex-start;gap:48px;}
+body .rooms-shell.phone-shell .studio-nav-brand {font-family:"Songti SC","STSong","SimSun",serif;font-size:25px;letter-spacing:.1em;font-weight:600;}
+body .rooms-shell.phone-shell .studio-nav-brand i {font-family:Georgia,serif;font-size:12px;letter-spacing:.1em;color:var(--accent);}
+body .rooms-shell.phone-shell .studio-nav-admin {margin-left:auto;}
+body .rooms-shell.phone-shell .studio-nav-link {border-radius:6px;color:var(--ink);padding:12px 20px;}
+body .rooms-shell.phone-shell .studio-nav-link.active {background:var(--accent-wash);color:var(--accent-ink);}
+body .rooms-shell.phone-shell :is(.primary-button,.secondary-button,.tiny-button,.search-box,.chip,.category-select select) {border-radius:6px;box-shadow:none;}
+body .rooms-shell.phone-shell .primary-button,.admin-shell .primary-button {background:var(--accent);border-color:var(--accent);color:white;box-shadow:none;border-radius:6px;}
+body .rooms-shell.phone-shell :is(.secondary-button,.tiny-button) {background:white;color:var(--ink-soft);border-color:var(--line-strong);}
+body .rooms-shell.phone-shell .primary-button:hover,.admin-shell .primary-button:hover {background:#493755;transform:none;}
+body .rooms-shell.phone-shell .danger-button {background:#fff7f7;color:#a04048;border:1px solid #e7c7cc;box-shadow:none;border-radius:6px;}
+body .rooms-shell.phone-shell :is(.field-block input,.field-block textarea,.field-block select) {background:white;border-color:var(--line-strong);border-radius:6px;font-size:14px;}
+body .rooms-shell.phone-shell .field-block textarea {line-height:1.85;}
+body .rooms-shell.phone-shell :is(.room-heading h2,.detail-copy h2) {font-size:28px;letter-spacing:0;color:var(--ink);}
+body .rooms-shell.phone-shell :is(.room-heading p,.room-muted,.room-eyebrow) {color:var(--muted);}
+body .rooms-shell.phone-shell .room-heading p {font-size:13px;}
+/* Home: a personal studio index, anchored by the selected iris still life. */
+.moon-home {display:grid;grid-template-columns:minmax(330px,.9fr) minmax(0,1.35fr);min-height:650px;background:#fff;}
+.moon-home-copy {padding:48px 40px 32px;display:flex;flex-direction:column;}
+.moon-eyebrow {font-size:10px;letter-spacing:.18em;color:var(--accent-2);}
+.moon-home-copy h2 {font-family:"Songti SC","STSong","SimSun",serif;font-size:80px;font-weight:500;color:var(--accent-ink);letter-spacing:.08em;margin:40px 0 22px;line-height:1.2;}
+.moon-home-lead {font-family:"Songti SC","STSong",serif;color:var(--accent-2);font-size:18px;line-height:1.9;margin:0 0 32px;}
+body .rooms-shell.phone-shell .moon-home .room-entrances {display:flex;flex-direction:column;gap:0;width:100%;margin:0;}
+body .rooms-shell.phone-shell .moon-home .room-entrance {display:flex;flex-direction:row;align-items:center;position:relative;min-height:94px;padding:18px 50px 18px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;color:var(--ink);box-shadow:none;overflow:visible;}
+body .rooms-shell.phone-shell .moon-home .room-entrance::before,body .rooms-shell.phone-shell .moon-home .room-entrance::after {display:none;}
+body .rooms-shell.phone-shell .moon-home .room-entrance:hover {background:var(--surface-2);transform:none;}
+.moon-home .room-entrance-body {gap:9px;}
+.moon-home .room-entrance-body strong {font-family:"Songti SC","STSong",serif;font-weight:500;font-size:25px;}
+.moon-home .room-entrance-body>span {font-size:12px;line-height:1.6;color:var(--ink-soft);}
+.moon-home .room-enter-arrow {position:absolute;right:0;top:50%;transform:translateY(-50%);color:var(--accent-2);font-size:12px;}
+.moon-home .room-home-footer {font-size:12px;color:var(--muted);margin:30px 0 0;}
+.moon-home-art {margin:0;position:relative;min-width:0;background:#e7e1db;display:grid;overflow:hidden;}
+.moon-home-art img {width:100%;height:100%;min-height:650px;object-fit:cover;object-position:66% center;}
+.moon-home-art figcaption {position:absolute;bottom:20px;left:24px;right:24px;display:flex;justify-content:space-between;gap:16px;color:white;background:#302a364d;padding:12px 14px;font-size:11px;}
+/* Canvas directory: small working previews and clear live workflow identities. */
+body .rooms-shell.phone-shell [data-screen="create"] {max-width:1200px;margin:auto;}
+body .rooms-shell.phone-shell .provider-tabs {background:#eee8f2;padding:4px;border-radius:6px;}
+body .rooms-shell.phone-shell .provider-tab {color:var(--ink-soft);border-radius:4px;}
+body .rooms-shell.phone-shell .provider-tab.active {color:var(--accent-ink);background:white;box-shadow:none;}
+body .rooms-shell.phone-shell .room-app-row {padding:16px;min-height:102px;border-radius:6px;border-color:var(--line);background:white;}
+body .rooms-shell.phone-shell .room-app-row:hover {border-color:#b7a5c3;background:#fdfbfe;}
+body .rooms-shell.phone-shell .room-app-preview {width:86px;flex-basis:86px;height:70px;background:var(--soft);border-radius:4px;}
+body .rooms-shell.phone-shell .room-app-copy small {font-size:12px;color:var(--muted);}
+body .rooms-shell.phone-shell .room-app-arrow,body .rooms-shell.phone-shell .room-app-row .style-meta {color:var(--accent-2);}
+/* Compose: original dynamic fields grouped by their actual roles. */
+body .rooms-shell.phone-shell [data-screen="compose"] {max-width:1400px;margin:auto;}
+body .rooms-shell.phone-shell .detail-copy {padding:0 0 24px;}
+.moon-compose-back {margin-bottom:12px;}
+.moon-compose-workspace {display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px;align-items:start;}
+body .rooms-shell.phone-shell .studio-form {padding:24px;background:white;border:1px solid var(--line);border-radius:6px;min-width:0;}
+body .rooms-shell.phone-shell .input-stack {display:flex;flex-direction:column;gap:24px;}
+body .rooms-shell.phone-shell .input-stack h3 {font-size:13px;font-weight:600;margin:0 0 16px;}
+.moon-input-text {display:flex;flex-direction:column;gap:20px;min-width:0;}
+.moon-input-text:empty {display:none;}
+.moon-input-text .prompt-field textarea {min-height:200px;}
+.moon-parameter-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;}
+.moon-image-fields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;}
+.moon-image-fields>.file-field:only-child {grid-column:1/-1;}
+.moon-image-fields .picker-row {display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+body .rooms-shell.phone-shell .upload-drop {background:#faf7fc;border-color:#cfc2d8;border-radius:6px;color:var(--ink-soft);}
+body .rooms-shell.phone-shell .upload-drop.compact {min-height:72px;}
+body .rooms-shell.phone-shell .upload-drop .upload-mark {color:var(--accent);background:var(--accent-wash);box-shadow:none;}
+body .rooms-shell.phone-shell .creation-input-preview {height:280px;background:var(--soft);border-radius:4px;}
+body .rooms-shell.phone-shell .inline-tool {color:var(--accent);background:var(--soft);font-size:12px;padding:6px 8px;}
+body .rooms-shell.phone-shell .prompt-field>span {flex-wrap:wrap;gap:8px;align-items:center;}
+body .rooms-shell.phone-shell .room-advanced summary::before {color:var(--accent);}
+.moon-canvas-reference {position:sticky;top:100px;padding-left:24px;border-left:1px solid var(--line);min-width:0;}
+.moon-canvas-reference h3 {font-size:14px;font-weight:600;margin:0 0 16px;}
+body .rooms-shell.phone-shell .moon-canvas-reference #composeCover {height:auto;max-height:410px;margin:0;background:var(--soft);border:0;border-radius:4px;}
+body .rooms-shell.phone-shell .moon-canvas-reference #composeCover img {width:100%;height:auto;max-height:410px;object-fit:contain;}
+.moon-canvas-reference p {font-size:12px;line-height:1.8;color:var(--muted);}
+/* Reference shelves retain full images, source-specific detail and original pagination. */
+body .rooms-shell.phone-shell #roomInspiration.inspiration-browser {--ink:#302a36;--muted:#716977;--line:#e5dfe9;--accent:#584565;--accent-wash:#eae3f0;}
+body .rooms-shell.phone-shell :is(.reference-domains a,.reference-count,.reference-filterline,.reference-filterline select,.reference-filterline .category-tabs a,.reference-filterline .category-tabs button) {color:var(--ink-soft);}
+body .rooms-shell.phone-shell .reference-domains a.active,
+body .rooms-shell.phone-shell #roomInspiration .category-tabs .active {color:var(--accent-ink);background:var(--accent-wash);border-color:var(--line-strong);}
+body .rooms-shell.phone-shell :is(#roomInspiration,#promptLibraryPanel) .reference-topline :is(.search,.search-box) {background:white;border-color:var(--line-strong);}
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card {border-color:var(--line);background:white;border-radius:6px;}
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card:is(:hover,:focus-within) {border-color:#aa95b9;box-shadow:0 0 0 1px #c8b9d255;}
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card .reference-cover {background:var(--soft);}
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card .inspiration-card-summary {color:var(--muted);}
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card :is(.reference-type,.reference-text-cover) {color:var(--accent);background:var(--soft);border-color:var(--line);}
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration,#portraitMaterialGrid) .reference-card .reference-text-cover :is(small,span) {color:var(--muted);}
+body .rooms-shell.phone-shell #promptList .reference-card:has([data-select-prompt]:checked) {outline-color:var(--accent);}
+body .rooms-shell.phone-shell :is(.button,.reference-favorites) {border-color:var(--line-strong);color:var(--ink-soft);border-radius:6px;}
+body .rooms-shell.phone-shell .button.primary {color:white;background:var(--accent);border-color:var(--accent);}
+#inspirationDetail.reference-detail {color:var(--ink);border-color:var(--line);box-shadow:var(--shadow-lg);}
+#inspirationDetail.reference-detail::backdrop {background:#302a3644;}
+#inspirationDetail.reference-detail :is(.reference-media,.detail-prompt,.reference-features) {background:var(--surface-2);border-color:var(--line);}
+#inspirationDetail.reference-detail :is(.reference-close,.reference-provenance,.editorial-basis,.reference-features h3) {color:var(--muted);}
+#inspirationDetail.reference-detail .button.primary {background:var(--accent);border-color:var(--accent);color:white;}
+#inspirationDetail.reference-detail .detail-language button.active {background:var(--accent-wash);color:var(--accent);border-color:var(--line);}
+/* Prompt editing: long-form writing with metadata kept beside it. */
+body .rooms-shell.phone-shell #promptEditorDialog {width:min(1080px,calc(100vw - 48px));max-width:calc(100vw - 24px);max-height:calc(100dvh - 48px);padding:28px;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow-lg);}
+body .rooms-shell.phone-shell #promptEditorDialog::backdrop {background:#302a3666;}
+body .rooms-shell.phone-shell #promptForm:not(.hidden) {display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:24px;margin:0;padding:0;background:white;border:0;box-shadow:none;}
+body .rooms-shell.phone-shell #promptForm .prompt-editor-heading {grid-column:1/-1;padding:0 0 16px;border-bottom:1px solid var(--line);}
+.moon-prompt-writing {display:flex;flex-direction:column;gap:20px;min-width:0;}
+.moon-prompt-writing #promptContentInput {min-height:390px;resize:vertical;}
+.moon-prompt-metadata {min-width:0;padding-left:24px;border-left:1px solid var(--line);}
+body .rooms-shell.phone-shell .moon-prompt-metadata .prompt-optional-fields {margin-top:22px;}
+body .rooms-shell.phone-shell #promptForm>.action-grid {grid-column:1/-1;position:sticky;bottom:-28px;background:white;margin:0;padding:16px 0 0;border-top:1px solid var(--line);z-index:2;}
+/* Portrait studio: actual steps, active material, summary and text outputs. */
+body .rooms-shell.phone-shell .portrait-workbench {grid-template-columns:175px minmax(0,1fr) 300px;gap:24px;align-items:start;}
+body .rooms-shell.phone-shell :is(.portrait-flow-panel,.portrait-material-panel,.portrait-summary-panel) {background:white;background-image:none;border:1px solid var(--line);border-radius:6px;box-shadow:none;}
+body .rooms-shell.phone-shell :is(.portrait-flow-panel,.portrait-summary-panel) {top:96px;max-height:calc(100dvh - 124px);padding:18px;}
+body .rooms-shell.phone-shell .portrait-material-panel {padding:20px;}
+body .rooms-shell.phone-shell .portrait-panel-title strong {font-family:inherit;font-size:14px;padding-left:0;}
+body .rooms-shell.phone-shell .portrait-panel-title strong::before {display:none;}
+body .rooms-shell.phone-shell .portrait-step-item {border-radius:5px;background:transparent;border-color:transparent;color:var(--ink-soft);box-shadow:none;}
+body .rooms-shell.phone-shell .portrait-step-item.active {background:var(--accent-wash);border-color:var(--line);color:var(--accent-ink);}
+body .rooms-shell.phone-shell .portrait-step-item>span {background:var(--soft);color:var(--accent);box-shadow:none;}
+body .rooms-shell.phone-shell .portrait-step-item small {color:var(--muted);}
+body .rooms-shell.phone-shell :is(.portrait-import-panel,.portrait-slot-editor,.portrait-step-manual) {border-color:var(--line);background:var(--surface-2);border-radius:6px;box-shadow:none;}
+body .rooms-shell.phone-shell .portrait-step-header strong {font-family:inherit;font-size:22px;}
+body .rooms-shell.phone-shell :is(.portrait-slot-editor-head strong,.portrait-slot-label) {font-family:inherit;color:var(--ink);}
+.moon-portrait-quick {margin:18px 0;border-bottom:1px solid var(--line);padding-bottom:14px;}
+.moon-portrait-quick>summary {cursor:pointer;color:var(--ink-soft);font-size:13px;padding:8px 0;}
+body .rooms-shell.phone-shell .portrait-summary-list {max-height:32vh;margin-bottom:20px;}
+body .rooms-shell.phone-shell .portrait-summary-group {border-color:var(--line);}
+body .rooms-shell.phone-shell .portrait-chip {color:var(--accent-ink);background:var(--soft);border-color:var(--line);box-shadow:none;}
+/* Gallery and task history: distinct browsing and activity layouts. */
+body .rooms-shell.phone-shell .gallery-workspace {grid-template-columns:200px minmax(0,1fr);gap:30px;}
+body .rooms-shell.phone-shell .gallery-rail-title {font-size:23px;}
+body .rooms-shell.phone-shell .gallery-rail-hint {font-size:12px;line-height:1.8;color:var(--muted);}
+body .rooms-shell.phone-shell .album-folder {font-size:13px;border-radius:5px;min-height:44px;}
+body .rooms-shell.phone-shell .album-folder.active {color:var(--accent-ink);background:var(--accent-wash);}
+body .rooms-shell.phone-shell .room-gallery-toolbar h2 {font-size:26px;}
+body .rooms-shell.phone-shell .photo-tile {border-radius:5px;background:var(--soft);}
+body .rooms-shell.phone-shell .room-selection-bar {background:var(--accent-wash);border-color:var(--line);border-radius:6px;color:var(--accent-ink);}
+body .rooms-shell.phone-shell [data-screen="history"] {max-width:1100px;margin:auto;}
+body .rooms-shell.phone-shell .record-list {display:flex;flex-direction:column;gap:0;background:white;border:1px solid var(--line);border-radius:6px;}
+body .rooms-shell.phone-shell .record-row {background:white;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;padding:18px 22px;}
+body .rooms-shell.phone-shell .record-row:last-child {border-bottom:0;}
+body .rooms-shell.phone-shell .record-row:hover {background:var(--surface-2);}
+body .rooms-shell.phone-shell .record-row small {color:var(--muted);}
+body .rooms-shell.phone-shell .chip.active {background:var(--accent-wash);color:var(--accent-ink);}
+body .rooms-shell.phone-shell [data-screen="result"] {max-width:1160px;margin:auto;}
+body .rooms-shell.phone-shell :is(.task-settings-card,.task-remote-card,.progress-card,.room-settings-panel) {border:1px solid var(--line);border-radius:6px;background:white;box-shadow:none;}
+body .rooms-shell.phone-shell :is(.room-dialog,.drawer-panel) {border-radius:10px;border-color:var(--line);background:white;box-shadow:var(--shadow-lg);}
+body .rooms-shell.phone-shell :is(#agentDrawer,#rewriteDrawer) .drawer-panel {width:min(960px,calc(100vw - 48px));max-width:960px;}
+body .rooms-shell.phone-shell :is(.rewrite-source,.agent-analysis,.rewrite-stream) {background:var(--surface-2);border-color:var(--line);color:var(--ink-soft);}
+body .rooms-shell.phone-shell .rewrite-source p {max-height:230px;overflow:auto;line-height:1.9;}
+body .rooms-shell.phone-shell #roomSettings {max-width:1100px;margin:auto;}
+body .rooms-shell.phone-shell .room-settings-panel {padding:26px;}
+body .rooms-shell.phone-shell .room-settings-panel p {font-size:13px;}
+.admin-shell :is(.admin-panel,.admin-style-row) {border-radius:6px;box-shadow:none;}
+.admin-shell .admin-header h1 {font-family:"Songti SC","STSong",serif;color:var(--accent-ink);}
+@media(min-width:1100px) {
+ body .rooms-shell.phone-shell .input-stack.moon-has-images {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;}
+ .moon-has-images .moon-input-images {grid-column:1;grid-row:1/4;}
+ .moon-has-images .moon-image-fields {grid-template-columns:1fr;}
+ .moon-has-images :is(.moon-input-text,.moon-input-parameters,.room-advanced) {grid-column:2;}
+ .moon-has-images .moon-parameter-grid {grid-template-columns:1fr;}
+}
+@media(min-width:900px) and (max-width:1150px) {
+ body .rooms-shell.phone-shell .portrait-workbench {grid-template-columns:145px minmax(0,1fr) 255px;gap:14px;}
+ body .rooms-shell.phone-shell :is(.portrait-material-panel,.portrait-summary-panel,.portrait-flow-panel) {padding:14px;}
+ .moon-compose-workspace {grid-template-columns:minmax(0,1fr) 245px;gap:20px;}
+ .moon-home-copy {padding:40px 28px;}
+}
+@media(max-width:899px) {
+ body .rooms-shell.phone-shell,
+ body .rooms-shell.phone-shell:has(.screen.active:is([data-screen="inspiration"],[data-screen="prompts"],[data-screen="portrait"])) {max-width:none;padding:18px 18px calc(100px + env(safe-area-inset-bottom));}
+ body .rooms-shell.phone-shell .studio-nav {display:none;}
+ body .rooms-shell.phone-shell .topbar {margin-bottom:24px;}
+ body .rooms-shell.phone-shell .topbar h1 {font-size:22px;}
+ body .rooms-shell.phone-shell .topbar p {font-size:11px;color:var(--muted);}
+ body .rooms-shell.phone-shell .bottom-tabs {background:#fdfbfe;border-color:var(--line);backdrop-filter:none;}
+ body .rooms-shell.phone-shell .bottom-tab {font-size:11px;min-height:44px;}
+ body .rooms-shell.phone-shell .bottom-tab.active {color:var(--accent-ink);background:var(--accent-wash);border-radius:6px;}
+ .moon-home {grid-template-columns:1fr;min-height:0;}
+ .moon-home-copy {padding:30px 24px;}
+ .moon-home-copy h2 {font-size:58px;margin:28px 0 16px;}
+ .moon-home-lead {font-size:17px;margin-bottom:20px;}
+ .moon-home-art {height:340px;}
+ .moon-home-art img {min-height:0;height:340px;object-fit:cover;object-position:65% 56%;}
+ .moon-home .room-entrance-body strong {font-size:24px;}
+ .moon-home .room-entrance-body>span {font-size:12px;}
+ .moon-home-art figcaption {bottom:14px;left:14px;right:14px;font-size:10px;}
+ body .rooms-shell.phone-shell .moon-home .room-entrance {min-height:88px;}
+ body .rooms-shell.phone-shell .home-filter-bar {gap:8px;}
+ body .rooms-shell.phone-shell :is(.tiny-button,.inline-tool,.reference-domains a,.category-tabs a,.category-tabs button,.reference-favorites) {min-height:40px;}
+ body .rooms-shell.phone-shell .provider-tab {min-height:44px;}
+ body .rooms-shell.phone-shell .room-app-row {padding:12px;}
+ body .rooms-shell.phone-shell .room-app-copy small {font-size:11px;white-space:normal;}
+ body .rooms-shell.phone-shell .room-app-preview {width:64px;flex-basis:64px;height:64px;}
+ body .rooms-shell.phone-shell .detail-copy h2 {font-size:23px;}
+ .moon-compose-workspace {grid-template-columns:1fr;gap:24px;}
+ .moon-canvas-reference {position:static;border-left:0;border-top:1px solid var(--line);padding:20px 0 0;}
+ body .rooms-shell.phone-shell .moon-canvas-reference #composeCover {max-height:220px;}
+ body .rooms-shell.phone-shell .moon-canvas-reference #composeCover img {max-height:220px;}
+ body .rooms-shell.phone-shell .studio-form {padding:18px;}
+ .moon-parameter-grid {gap:14px;}
+ .moon-image-fields {grid-template-columns:1fr;}
+ body .rooms-shell.phone-shell .creation-input-preview {height:240px;}
+ body .rooms-shell.phone-shell .portrait-workbench {display:flex;flex-direction:column;gap:16px;}
+ body .rooms-shell.phone-shell .portrait-workbench>aside,body .rooms-shell.phone-shell .portrait-material-panel {width:100%;position:static;max-height:none;}
+ body .rooms-shell.phone-shell .portrait-flow-panel {padding:12px;background:transparent;}
+ body .rooms-shell.phone-shell .portrait-step-list {display:flex;overflow-x:auto;gap:6px;}
+ body .rooms-shell.phone-shell .portrait-step-item {min-width:88px;flex:0 0 auto;}
+ body .rooms-shell.phone-shell .portrait-summary-panel {padding:18px;}
+ body .rooms-shell.phone-shell .portrait-summary-panel .portrait-summary-list {display:none;}
+ body .rooms-shell.phone-shell .portrait-material-panel {padding:16px;}
+ body .rooms-shell.phone-shell .portrait-slot-editor {padding:12px;}
+ body .rooms-shell.phone-shell .gallery-workspace {grid-template-columns:1fr;gap:20px;}
+ body .rooms-shell.phone-shell .gallery-rail-hint {font-size:12px;}
+ body .rooms-shell.phone-shell .record-row {padding:14px 12px;}
+ body .rooms-shell.phone-shell #promptEditorDialog {width:calc(100vw - 24px);max-height:calc(100dvh - 24px);padding:20px;}
+ body .rooms-shell.phone-shell #promptForm:not(.hidden) {grid-template-columns:1fr;gap:20px;}
+ .moon-prompt-writing #promptContentInput {min-height:260px;}
+ .moon-prompt-metadata {border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:18px;}
+ body .rooms-shell.phone-shell #promptForm>.action-grid {bottom:-20px;}
+ body .rooms-shell.phone-shell :is(#agentDrawer,#rewriteDrawer) .drawer-panel {width:100%;max-width:100%;}
+}
+@media(prefers-reduced-motion:reduce) {
+ *,*::before,*::after {animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}
+}
+
+.moon-negative {border-top:1px solid var(--line);padding-top:14px;}
+.moon-negative>summary {font-size:13px;cursor:pointer;color:var(--ink-soft);padding:8px 0;}
+.moon-negative[open]>.field-block {margin-top:12px;}
+body .rooms-shell.phone-shell :is(.studio-nav-link,.field-block input,.field-block textarea,.field-block select,.tiny-button,.secondary-button,.primary-button) {font-weight:400;}
+body .rooms-shell.phone-shell .studio-nav {box-shadow:none;}
+body .rooms-shell.phone-shell .screen.active {animation:none;}
+.moon-home-art img {position:absolute;inset:0;min-height:0;object-fit:contain;}
+@media(max-width:899px) { .moon-home-art img {height:340px;object-fit:cover;} }
+/* The inspiration browser has its own variables; align those without altering the archived standalone library. */
+body .rooms-shell.phone-shell .inspiration-browser,
+body .rooms-shell.phone-shell .inspiration-dialog {--paper:#f8f6fa;--white:#fff;--ink:#302a36;--muted:#716977;--line:#e5dfe9;--blue:#584565;--wash:#eae3f0;--purple:#796789;}
+body .rooms-shell.phone-shell .inspiration-browser .entrance {border-radius:6px;box-shadow:none;}
+body .rooms-shell.phone-shell .inspiration-browser .entrance:hover {border-color:#b7a5c3;transform:none;box-shadow:none;}
+body .rooms-shell.phone-shell .inspiration-browser :is(.prompt-visual,.image-visual) {background:#eee8f2;}
+body .rooms-shell.phone-shell .inspiration-browser .prompt-paper {border-color:var(--line);box-shadow:8px 9px 0 #e2d8e8;}
+body .rooms-shell.phone-shell .inspiration-browser .prompt-paper strong {color:var(--accent);}
+body .rooms-shell.phone-shell .inspiration-browser .prompt-paper small {color:var(--muted);}
+body .rooms-shell.phone-shell .inspiration-browser .animation-visual {background:#43334e;}
+body .rooms-shell.phone-shell .inspiration-browser .film-frame {background:#584565;border-color:#9a85a8;box-shadow:6px 6px 0 #362a3f;}
+body .rooms-shell.phone-shell .inspiration-browser .film-scene .mountain {background:#8e769c;}
+body .rooms-shell.phone-shell .inspiration-browser .film-scene .mountain.second {background:#b6a2c2;}
+body .rooms-shell.phone-shell .inspiration-browser .film-scene .moon {background:#f0e8f5;}
+body .rooms-shell.phone-shell .inspiration-browser :is(.film-caption,.entrance-title span,.entrance-bottom) {color:#796789;}
+body .rooms-shell.phone-shell .inspiration-browser .entrance-bottom {border-color:var(--line);}
+body .rooms-shell.phone-shell .inspiration-browser .home-search {background:white;border-color:var(--line);}
+@media(min-width:900px) {
+ body .rooms-shell.phone-shell .portrait-summary-panel {grid-column:3;grid-row:1;position:sticky;top:96px;max-height:calc(100dvh - 124px);}
+ body .rooms-shell.phone-shell #portraitMaterialGrid {grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+}
+@media(min-width:1400px) { body .rooms-shell.phone-shell #portraitMaterialGrid {grid-template-columns:repeat(3,minmax(0,1fr));} }
+@media(max-width:899px) {
+ body .rooms-shell.phone-shell :is(.portrait-flow-panel,.portrait-summary-panel) {display:block;}
+ body .rooms-shell.phone-shell .portrait-mobile-result-panel {display:none;}
+}
+body .rooms-shell.phone-shell .portrait-import-head>.tiny-button {flex-shrink:0;min-width:56px;white-space:nowrap;}
+body .rooms-shell.phone-shell #promptDiscardDialog {width:min(440px,calc(100vw - 32px));padding:24px;}
+body .rooms-shell.phone-shell #promptDiscardDialog p {font-size:14px;color:var(--muted);line-height:1.8;}
+body .rooms-shell.phone-shell #promptDiscardDialog .action-grid {margin-top:22px;}
+@media(min-width:900px) {
+ body .rooms-shell.phone-shell #portraitMaterialGrid.inspiration-card-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+}
+@media(min-width:1400px) { body .rooms-shell.phone-shell #portraitMaterialGrid.inspiration-card-grid {grid-template-columns:repeat(3,minmax(0,1fr));} }
+body .rooms-shell.phone-shell :is(.portrait-result,.portrait-summary-group,.portrait-import-panel,.portrait-step-manual) {box-shadow:none;border-radius:6px;}

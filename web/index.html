@@ -4,27 +4,55 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>画室</title>
-    <link rel="stylesheet" href="/styles.css?v=20260523-pose2" />
-  </head>
+    <link rel="stylesheet" href="/styles.css?v=20261014-prompt-compact-1" />
+    <link rel="stylesheet" href="/rooms.css?v=20261014-prompt-compact-1" />
+    <link rel="stylesheet" href="/inspiration.css?v=20261015-full-image-1" />
+    <link rel="stylesheet" href="/prompt-folders.css?v=20261014-prompt-compact-1" />
+    <link rel="stylesheet" href="/prompt-cards.css?v=20261015-prompt-cards-1" />
+    <link rel="stylesheet" href="/inspiration-cards.css?v=20261016-unified-ui-1" />
+    <link rel="stylesheet" href="/inspiration-contact.css?v=20261016-contact-1" />
+    <link rel="stylesheet" href="/moon-studio.css?v=20261017-moon-1" />
+    <link rel="stylesheet" href="/task-queue.css?v=20261019-queue-3" />
+  <link rel="stylesheet" href="/material-bag.css?v=20261030-bag-3" /></head>
   <body>
-    <div id="app" class="phone-shell" data-view="home">
+    <div id="app" class="phone-shell rooms-shell" data-view="home">
       <header class="topbar">
-        <button class="ghost-icon back-control" id="backButton" type="button" aria-label="返回">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6" /></svg>
-        </button>
-        <div>
-          <h1 id="pageTitle">画室</h1>
-          <p id="pageHint">样式广场</p>
-        </div>
-        <span class="topbar-spacer" aria-hidden="true"></span>
+        <button class="ghost-icon back-control" id="backButton" type="button" aria-label="返回"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6" /></svg></button>
+        <div><h1 id="pageTitle">画室</h1><p id="pageHint">个人 AI 创作工作台</p></div>
+        <button type="button" class="material-bag-entry" data-material-bag="">素材袋 <span data-material-bag-count>0</span></button>
+        <button class="room-home-button" type="button" data-nav-view="home" aria-label="返回首页">首页</button>
+        <button class="tiny-button queue-nav-mobile" type="button" data-nav-view="queue">队列 <span data-queue-count></span></button>
+        <button class="ghost-icon room-settings-button" type="button" data-nav-view="settings" aria-label="设置"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6" /></svg></button>
       </header>
+      <nav class="studio-nav" aria-label="主导航">
+        <button class="studio-nav-brand" type="button" data-nav-view="home">画室 <i>Huashi</i></button>
+        <span class="studio-nav-links">
+          <button class="studio-nav-link" type="button" data-nav-view="home">首页</button>
+          <button class="studio-nav-link" type="button" data-nav-view="create">创作间</button>
+          <button class="studio-nav-link" type="button" data-nav-view="inspiration">灵感屋</button>
+          <button class="studio-nav-link" type="button" data-nav-view="gallery">陈列室</button>
+        </span>
+        <button type="button" class="material-bag-entry" data-material-bag="">素材袋 <span data-material-bag-count>0</span></button>
+        <button class="studio-nav-link queue-nav-entry" type="button" data-nav-view="queue">生成队列 <span data-queue-count></span> ↗</button>
+        <button class="studio-nav-link studio-nav-admin" type="button" data-nav-view="settings">设置</button>
+      </nav>
 
       <main>
         <section class="screen" data-screen="home">
+          <div id="roomHome"></div>
+        </section>
+
+        <section class="screen" data-screen="create">
+          <div class="room-heading"><div><h2>创作间</h2><p>选一个画布，开始你的下一张图片。</p></div><div class="queue-heading-actions"><button class="secondary-button" type="button" data-nav-view="queue">生成队列 ↗</button><button class="secondary-button" type="button" data-nav-view="history">生成记录 ↗</button></div></div>
+          <div id="pendingInspiration" class="room-pending-inspiration" hidden>已选好灵感，选择画布后填入提示词。<button class="tiny-button" type="button" id="clearPendingInspiration">清除</button></div>
+          <div class="provider-tabs" role="tablist" aria-label="生成来源">
+              <button class="provider-tab active" type="button" data-home-provider="runpod" role="tab" aria-selected="true">RunPod</button>
+              <button class="provider-tab" type="button" data-home-provider="runninghub" role="tab" aria-selected="false">RunningHub</button>
+          </div>
           <div class="home-filter-bar">
             <label class="search-box compact-search">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
-              <input id="searchInput" type="search" placeholder="搜索" />
+              <input id="searchInput" type="search" placeholder="搜索创作画布" />
             </label>
             <label class="category-select">
               <select id="categorySelect" aria-label="分类"></select>
@@ -41,22 +69,29 @@
             <div id="favoriteGrid" class="style-grid favorite-grid"></div>
           </section>
           <section class="style-section">
-            <div class="section-heading compact"><span id="styleSectionTitle">全部样式</span></div>
+            <div class="section-heading compact"><span id="styleSectionTitle">全部画布</span></div>
             <div id="styleGrid" class="style-grid"></div>
           </section>
         </section>
 
         <section class="screen" data-screen="compose">
-          <div id="composeCover" class="detail-cover"></div>
-          <div class="detail-copy">
-            <h2 id="composeTitle">选择样式</h2>
+
+          <div class="detail-copy"><button class="tiny-button moon-compose-back" type="button" data-nav-view="create">← 返回画布</button>
+
+            <h2 id="composeTitle">选择画布</h2>
             <p id="composeMeta"></p>
           </div>
-          <form id="createTaskForm" class="studio-form">
+          <div class="moon-compose-workspace"><form id="createTaskForm" class="studio-form">
             <div id="dynamicInputs" class="input-stack"></div>
+            <div class="queue-compose-footer" id="queueComposeFooter" hidden><span class="queue-submit-note">已加入的任务独立保存，<br>可以继续修改设置，准备下一单。</span><button class="queue-text" type="button" data-nav-view="queue">查看队列 ↗</button></div>
             <button class="primary-button" type="submit" id="generateButton" disabled>开始生成</button>
           </form>
-          <div id="notice" class="notice hidden"></div>
+          <aside class="moon-canvas-reference"><h3>画布参考</h3><div id="composeCover" class="detail-cover" hidden></div><p>此图用于说明所选画布。生成结果将在任务完成后展示。</p><button class="secondary-button" type="button" data-nav-view="history">查看生成记录</button></aside></div><div id="notice" class="notice hidden"></div>
+        </section>
+
+        <section class="screen" data-screen="queue">
+          <div class="room-heading"><div><span class="room-eyebrow">创作间 / RunPod</span><h2>生成队列</h2><p>让任务依次生成，想法可以接着来。</p></div><button class="primary-button" type="button" id="queueContinueCompose">＋ 继续创作</button></div>
+          <div id="queueError" class="notice hidden" role="status"></div><div id="runpodQueueView"></div>
         </section>
 
         <section class="screen" data-screen="result">
@@ -64,119 +99,231 @@
         </section>
 
         <section class="screen" data-screen="history">
+          <div class="room-heading"><div><span class="room-eyebrow">CREATION HISTORY</span><h2>生成记录</h2><p>每一次尝试都留在这里。</p></div><button class="secondary-button" type="button" data-nav-view="create">选择画布</button></div>
           <div class="chip-row">
             <button class="chip active" type="button" data-history-filter="all">全部</button>
             <button class="chip" type="button" data-history-filter="success">已完成</button>
             <button class="chip" type="button" data-history-filter="running">处理中</button>
             <button class="chip" type="button" data-history-filter="failed">失败</button>
           </div>
-          <div id="taskList" class="record-list"></div>
+          <div id="historyPagination"></div><div id="taskList" class="record-list"></div>
         </section>
 
         <section class="screen" data-screen="gallery">
-          <div class="album-toolbar">
-            <div id="albumFolderList" class="album-folder-list"></div>
-            <div class="album-actions">
-              <button class="secondary-button compact-action" id="newAlbumFolderButton" type="button">新建文件夹</button>
-              <label class="secondary-button compact-action album-upload-button">
-                上传图片
-                <input id="albumUploadInput" type="file" accept="image/*" />
-              </label>
+          <div class="gallery-workspace">
+            <aside class="gallery-rail">
+              <div class="gallery-rail-head">
+                <span class="gallery-rail-title">陈列室</span>
+                <span class="gallery-rail-hint">作品与素材，放在顺手的位置</span>
+              </div>
+              <div id="albumFolderList" class="album-folder-list"></div>
+              <div class="album-actions">
+                <label class="secondary-button compact-action album-upload-button">添加素材 · 待整理
+                  <input id="inboxUploadInput" type="file" accept="image/*" />
+                </label>
+                <button class="secondary-button compact-action" id="newAlbumFolderButton" type="button">新建文件夹</button>
+                <label class="secondary-button compact-action album-upload-button">
+                  上传到当前分类
+                  <input id="albumUploadInput" type="file" accept="image/*" />
+                </label>
+              </div>
+            </aside>
+            <div class="gallery-stage">
+              <div class="room-gallery-toolbar"><div><h2 id="galleryName">我的作品</h2><p id="galleryCount"></p></div><label class="room-grid-size">网格 <input id="gridSizeInput" type="range" min="3" max="6" value="4" aria-label="图片网格大小"></label></div>
+              <div id="gallerySelection" class="room-selection-bar" hidden></div>
+              <div id="artworkGallery" class="artwork-gallery empty-state">暂无作品</div>
+              <div id="galleryPagination" class="room-pagination"></div>
             </div>
           </div>
-          <div id="artworkGallery" class="artwork-gallery empty-state">暂无作品</div>
         </section>
 
+        <section class="screen" data-screen="inspiration"><div id="roomInspiration"></div></section>
+        <section class="screen" data-screen="settings"><div id="roomSettings"></div></section>
+
         <section class="screen" data-screen="prompts">
-          <div class="prompt-toolbar">
-            <label class="search-box">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
-              <input id="promptSearchInput" type="search" placeholder="搜索标题、正文、标签" />
-            </label>
-            <button class="secondary-button" id="newPromptButton" type="button">新建</button>
+          <div class="room-subnav"><button class="tiny-button" type="button" data-nav-view="inspiration">← 灵感屋</button><button class="tiny-button" type="button" data-prompt-section="library">提示词</button><button class="tiny-button" type="button" data-prompt-section="portrait">人像工坊</button></div>
+          <p id="promptToolHint" class="room-tool-hint" hidden></p>
+          <div id="promptHubPanel" class="prompt-hub">
+            <button class="prompt-hub-card" type="button" data-prompt-section="portrait">
+              <span class="prompt-hub-icon">人</span>
+              <strong>人像工坊</strong>
+              <small>图片素材组合高端人像提示词</small>
+            </button>
+            <button class="prompt-hub-card" type="button" data-prompt-section="library">
+              <span class="prompt-hub-icon">词</span>
+              <strong>预设和拆解</strong>
+              <small>保存提示词、局部修改和衍生</small>
+            </button>
           </div>
-          <form id="promptForm" class="prompt-form hidden">
-            <input id="promptIdInput" type="hidden" />
-            <label class="field-block">
-              <span>名称</span>
-              <input id="promptTitleInput" required placeholder="例如：电影感海报提示词" />
-            </label>
-            <label class="field-block">
-              <span>提示词</span>
-              <textarea id="promptContentInput" rows="7" required placeholder="把你觉得好的提示词粘贴到这里"></textarea>
-            </label>
-            <input id="promptSamplePathInput" type="hidden" />
-            <div class="prompt-sample-field">
-              <button class="sample-picker" id="choosePromptSampleButton" type="button">
-                <span id="promptSamplePreview">配图</span>
-              </button>
-              <button class="tiny-button" id="clearPromptSampleButton" type="button">清除配图</button>
+          <div id="promptLibraryPanel" class="prompt-directory-layout">
+            <div class="prompt-directory-content">
+            <div class="prompt-toolbar reference-topline"><nav class="reference-domains" aria-label="灵感类型"><a href="#inspiration/search">全部</a><a href="#inspiration/prompts" class="active" aria-current="page">提示词</a><a href="#inspiration/animation/code">动画</a><a href="#inspiration/image/cases">图像</a></nav>
+              <label class="search-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
+                <input id="promptSearchInput" type="search" placeholder="搜索标题、正文、标签" />
+              </label>
+
+              <button class="secondary-button" id="managePromptFoldersButton" type="button">管理目录</button>
+              <button class="primary-button" id="newPromptButton" type="button">＋ 新增</button>
             </div>
-            <label class="field-block">
-              <span>标签</span>
-              <input id="promptTagsInput" placeholder="海报, 人像, 写实" />
-            </label>
-            <label class="check-line"><input id="promptFavoriteInput" type="checkbox" /> 设为常用</label>
-            <label class="field-block">
-              <span>备注</span>
-              <textarea id="promptNoteInput" rows="2"></textarea>
-            </label>
-            <div class="action-grid">
-              <button class="primary-button" type="submit">保存提示词</button>
-              <button class="secondary-button" id="cancelPromptButton" type="button">取消</button>
+            <div class="prompt-library-heading"><div><h2>提示词</h2><p class="prompt-library-intro">收藏好用的表达，留住下一次创作的灵感。</p></div></div>
+            <aside class="prompt-directory-sidebar" aria-label="提示词目录"><details id="promptDirectoryPanel"><summary>选择目录</summary><div id="promptDirectoryTree"></div></details></aside>
+            <div class="prompt-directory-status"><strong id="promptDirectoryPath">正在读取目录…</strong><span id="promptDirectoryCount"></span><button class="tiny-button" id="promptDirectoryRetry" type="button" hidden>重试目录</button></div>
+            <div class="prompt-selection-tools"><a class="tiny-button" href="#inspiration/prompts/portrait">人像工坊</a><label class="check-line prompt-search-all"><input id="promptSearchAll" type="checkbox">搜索全部目录</label><button class="tiny-button" id="promptSelectMode" type="button">选择</button><button class="tiny-button" id="promptSelectVisible" type="button" hidden>全选当前结果</button><button class="tiny-button" id="promptMoveSelected" type="button" hidden disabled>移动所选</button><span id="promptSelectionCount" aria-live="polite"></span></div>
+            <dialog id="promptEditorDialog" class="prompt-editor-dialog" aria-label="新增或编辑提示词"><form id="promptForm" class="prompt-form hidden">
+              <div class="prompt-editor-heading"><h3>保存提示词</h3><span>粘贴内容，留待下次创作</span></div><input id="promptIdInput" type="hidden" />
+              <div class="moon-prompt-writing">
+              <label class="field-block">
+                <span>名称</span>
+                <input id="promptTitleInput" required placeholder="例如：电影感海报提示词" />
+              </label>
+              <label class="field-block">
+                <span>提示词</span>
+                <textarea id="promptContentInput" rows="7" required placeholder="把你觉得好的提示词粘贴到这里"></textarea>
+              </label>
+              </div><aside class="moon-prompt-metadata"><div id="promptFormFolder"></div>
+              <input id="promptSamplePathInput" type="hidden" />
+              <details id="promptOptionalFields" class="prompt-optional-fields"><summary>配图、标签和备注（可选）</summary><div class="prompt-sample-field">
+                <button class="sample-picker" id="choosePromptSampleButton" type="button">
+                  <span id="promptSamplePreview">配图</span>
+                </button>
+                <label class="tiny-button prompt-upload-label">上传配图<input id="promptSampleUploadInput" type="file" accept="image/*" hidden></label>
+                <button class="tiny-button" id="choosePromptSampleLibrary" type="button">从陈列室选择</button>
+                <button class="tiny-button" id="clearPromptSampleButton" type="button">清除配图</button>
+              </div>
+              <label class="field-block">
+                <span>标签</span>
+                <input id="promptTagsInput" placeholder="海报, 人像, 写实" />
+              </label>
+              <label class="check-line"><input id="promptFavoriteInput" type="checkbox" /> 设为常用</label>
+              <label class="field-block">
+                <span>备注</span>
+                <textarea id="promptNoteInput" rows="2"></textarea>
+              </label>
+              </details>
+              </aside>
+              <div class="action-grid">
+                <button class="primary-button" type="submit">保存提示词</button>
+                <button class="secondary-button" id="cancelPromptButton" type="button">取消</button>
+              </div>
+            </form></dialog>
+            <div id="promptList" class="prompt-list inspiration-card-grid"></div><div id="promptPagination"></div>
             </div>
-          </form>
-          <div id="promptList" class="prompt-list"></div>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="portrait">
+          <div class="room-subnav"><button class="tiny-button" type="button" data-nav-view="inspiration">← 灵感屋</button><button class="tiny-button" type="button" data-prompt-section="library">提示词</button><span>人像工坊</span></div>
+          <div class="portrait-workbench">
+            <aside class="portrait-flow-panel">
+              <div class="portrait-panel-title">
+                <strong>选片流程</strong>
+                <span id="portraitFlowProgress">第 1 步</span>
+              </div>
+              <div id="portraitStepList" class="portrait-step-list"></div>
+            </aside>
+
+            <section class="portrait-material-panel">
+              <section class="portrait-import-panel">
+                <div class="portrait-import-head">
+                  <div>
+                    <span>从提示词开始</span>
+                    <strong>粘贴提示词，自动拆到人像槽位</strong>
+                    <p>解析后只显示槽位草稿；原文翻译和保留项会收起，不打断选片流程。</p>
+                  </div>
+                  <button class="tiny-button" id="portraitImportToggleButton" type="button">展开</button>
+                </div>
+                <div id="portraitImportBody" class="portrait-import-body hidden">
+                  <textarea id="portraitImportPromptInput" rows="4" placeholder="粘贴一段成熟提示词，中文或英文都可以"></textarea>
+                  <div class="portrait-import-actions">
+                    <button class="primary-button" id="portraitAnalyzePromptButton" type="button">解析并填入槽位</button>
+                    <button class="secondary-button" id="portraitClearImportButton" type="button">清空导入</button>
+                  </div>
+                  <div id="portraitImportResult" class="portrait-import-result hidden"></div>
+                </div>
+              </section>
+              <details class="moon-portrait-quick"><summary>快速编辑所有槽位</summary><section class="portrait-slot-editor" id="portraitSlotEditor"></section></details>
+              <div class="portrait-step-header">
+                <div>
+                  <span id="portraitStepKicker">素材选择</span>
+                  <strong id="portraitStepTitle">读取素材中</strong>
+                  <p id="portraitStepHint">喜欢就点，不需要就跳过。</p>
+                </div>
+                <div class="portrait-step-actions">
+                  <button class="secondary-button" id="portraitPrevStepButton" type="button">上一步</button>
+                  <button class="secondary-button" id="portraitNextStepButton" type="button">下一步</button>
+                </div>
+              </div>
+              <div class="portrait-mobile-tools">
+                <label class="search-box portrait-search">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
+                  <input id="portraitMobileSearchInput" type="search" placeholder="在当前步骤搜索" />
+                </label>
+                <button class="secondary-button" id="portraitOpenSlotsButton" type="button">已选</button>
+              </div>
+              <label class="search-box portrait-desktop-search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
+                <input id="portraitSearchInput" type="search" placeholder="在当前步骤搜索" />
+              </label>
+              <div id="portraitStepManualBox" class="portrait-step-manual"></div>
+              <div id="portraitMaterialGrid" class="portrait-material-grid inspiration-card-grid"></div>
+              <div id="portraitPagination"></div><button hidden class="secondary-button portrait-more" id="portraitLoadMoreButton" type="button">加载更多</button>
+              <div id="portraitMobileStatus" class="notice hidden portrait-mobile-status"></div>
+              <div id="portraitMobileResult" class="portrait-mobile-result-panel portrait-result empty-state">选择素材或输入想法后生成</div>
+            </section>
+
+            <aside class="portrait-summary-panel">
+              <div class="portrait-panel-title">
+                <strong>已选与生成结果</strong>
+                <span id="portraitSelectedSummary">未选择</span>
+              </div>
+              <div id="portraitSlotList" class="portrait-summary-list"></div>
+              <label class="field-block compact-field">
+                <span>模型</span>
+                <select id="portraitModelInput"></select>
+              </label>
+              <button class="primary-button" id="portraitGenerateButton" type="button">生成 1 条人像提示词</button>
+              <div id="portraitStatus" class="notice hidden"></div>
+              <div id="portraitResult" class="portrait-result empty-state">选择素材或输入想法后生成</div>
+            </aside>
+          </div>
         </section>
       </main>
 
       <nav class="bottom-tabs" aria-label="主导航">
-        <button class="bottom-tab active" type="button" data-nav-view="home">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z" /></svg>
-          首页
-        </button>
-        <button class="bottom-tab" type="button" data-nav-view="history">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
-          记录
-        </button>
-        <button class="bottom-tab" type="button" data-nav-view="gallery">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Zm3 12 3.2-3.2 2.3 2.3L16 11l3 4.2M8.5 8.5h.01" /></svg>
-          画册
-        </button>
-        <button class="bottom-tab" type="button" data-nav-view="prompts">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8a2 2 0 0 1 2 2v14l-6-3-6 3V6a2 2 0 0 1 2-2Z" /></svg>
-          提示词
-        </button>
-        <a class="bottom-tab" href="/admin">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM19.4 15a1.8 1.8 0 0 0 .3 2l.1.1-2 3.4-.2-.1a1.8 1.8 0 0 0-2.1.4l-.1.1h-4l-.1-.1a1.8 1.8 0 0 0-2.1-.4l-.2.1-2-3.4.1-.1a1.8 1.8 0 0 0 .3-2l-.1-.2-2-1.1v-3.4l2-1.1.1-.2a1.8 1.8 0 0 0-.3-2L7 6.9l2-3.4.2.1a1.8 1.8 0 0 0 2.1-.4l.1-.1h4l.1.1a1.8 1.8 0 0 0 2.1.4l.2-.1 2 3.4-.1.1a1.8 1.8 0 0 0-.3 2l.1.2 2 1.1v3.4l-2 1.1Z" /></svg>
-          管理
-        </a>
+        <button class="bottom-tab" type="button" data-nav-view="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8v9H15v-6H9v6H3v-9Z"/></svg>首页</button>
+        <button class="bottom-tab" type="button" data-nav-view="create"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4-1 11-11-3-3L5 16l-1 4Z"/></svg>创作间</button>
+        <button class="bottom-tab" type="button" data-nav-view="inspiration"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M8 13a6 6 0 1 1 8 0l-1 3H9l-1-3Z"/></svg>灵感屋</button>
+        <button class="bottom-tab" type="button" data-nav-view="gallery"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4V5ZM4 15l5-5 5 5 3-3 3 3"/></svg>陈列室</button>
       </nav>
+      <dialog id="promptDiscardDialog" class="room-dialog" aria-label="提示词未保存"><h3>提示词有未保存的修改</h3><p>继续编辑可以保留当前草稿；放弃修改会关闭编辑器。</p><div class="action-grid"><button class="primary-button" id="keepPromptDraftButton" type="button">继续编辑</button><button class="secondary-button" id="discardPromptDraftButton" type="button">放弃修改</button></div></dialog>
+      <dialog id="albumFolderDialog" class="room-dialog room-organize-dialog"></dialog>
+      <dialog id="albumMoveDialog" class="room-dialog room-organize-dialog"></dialog>
+      <dialog id="creationTargetDialog" class="room-dialog"></dialog>
+      <dialog id="canvasPromptDialog" class="room-dialog room-organize-dialog"></dialog>
+      <dialog id="inspirationDetail" class="room-dialog"></dialog>
 
       <div id="promptPicker" class="drawer hidden" aria-hidden="true">
         <div class="drawer-scrim" data-close-prompt-picker></div>
-        <section class="drawer-panel">
+        <section class="drawer-panel" role="dialog" aria-modal="true" aria-label="从灵感屋选择">
           <div class="drawer-handle"></div>
           <div class="section-heading">
-            <span>选择提示词</span>
+            <span>从灵感屋选择</span>
             <button class="tiny-button" type="button" data-close-prompt-picker>关闭</button>
           </div>
-          <label class="search-box">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
-            <input id="pickerSearchInput" type="search" placeholder="搜索提示词" />
-          </label>
-          <div id="pickerPromptList" class="prompt-list picker-list"></div>
+          <div id="pickerPromptList" class="room-picker-search"></div>
         </section>
       </div>
 
       <div id="artworkPicker" class="drawer hidden" aria-hidden="true">
         <div class="drawer-scrim" data-close-artwork-picker></div>
-        <section class="drawer-panel artwork-picker-panel">
+        <section class="drawer-panel artwork-picker-panel" role="dialog" aria-modal="true" aria-label="从陈列室选择图片">
           <div class="drawer-handle"></div>
           <div class="section-heading">
-            <span>选择作品</span>
+            <span>从陈列室选择图片</span>
             <button class="tiny-button" type="button" data-close-artwork-picker>关闭</button>
           </div>
+          <button type="button" class="tiny-button room-picker-back" id="artworkPickerBack" hidden>← 返回分类</button>
           <div id="artworkPickerList" class="artwork-picker-grid"></div>
         </section>
       </div>
@@ -186,7 +333,7 @@
         <section class="drawer-panel rewrite-panel">
           <div class="drawer-handle"></div>
           <div class="section-heading">
-            <span>AI 改写提示词</span>
+            <span id="rewriteDrawerTitle">AI 改写提示词</span>
             <button class="tiny-button" type="button" data-close-rewrite>关闭</button>
           </div>
           <div class="rewrite-source">
@@ -226,7 +373,7 @@
         <section class="drawer-panel rewrite-panel agent-panel">
           <div class="drawer-handle"></div>
           <div class="section-heading">
-            <span>智能拆解</span>
+            <span>提示词局部修改</span>
             <button class="tiny-button" type="button" data-close-agent>关闭</button>
           </div>
           <div class="rewrite-source">
@@ -237,19 +384,48 @@
             <span>模型</span>
             <select id="agentModelInput"></select>
           </label>
-          <button class="secondary-button" id="agentAnalyzeButton" type="button">开始拆解</button>
+          <button class="secondary-button" id="agentAnalyzeButton" type="button">识别可修改项</button>
           <div id="agentStatus" class="notice hidden"></div>
           <div id="agentAnalysis" class="agent-analysis"></div>
-          <label class="field-block">
-            <span id="agentInstructionLabel">修改要求</span>
-            <textarea id="agentInstructionInput" rows="4" placeholder="例如：换成印度王子，穿印度皇家服饰，场景改成夜晚月光下的皇宫，表情威严但忧郁"></textarea>
+          <label class="field-block agent-extra-field">
+            <span id="agentInstructionLabel">其他补充</span>
+            <textarea id="agentInstructionInput" rows="3" maxlength="200" placeholder="例如：整体更神秘一点，人物气质更冷艳。不填也可以。"></textarea>
           </label>
-          <button class="primary-button" id="agentGenerateButton" type="button">生成 1 条提示词</button>
+          <button class="primary-button" id="agentGenerateButton" type="button">生成新提示词</button>
           <div id="agentResult" class="rewrite-results"></div>
+        </section>
+      </div>
+      <div id="copyToast" class="copy-toast hidden" role="status" aria-live="polite"></div>
+      <div id="portraitSlotDrawer" class="drawer hidden" aria-hidden="true">
+        <div class="drawer-scrim" data-close-portrait-slots></div>
+        <section class="drawer-panel portrait-drawer-panel">
+          <div class="drawer-handle"></div>
+          <div class="section-heading">
+            <span>已选收纳</span>
+            <button class="tiny-button" type="button" data-close-portrait-slots>关闭</button>
+          </div>
+          <div id="portraitDrawerSlotList" class="portrait-summary-list"></div>
         </section>
       </div>
     </div>
 
-    <script src="/app.js?v=20260523-pose2"></script>
-  </body>
+    <dialog id="albumDeleteDialog" class="room-organize-dialog" aria-label="删除图片确认"></dialog>
+    <script src="/pagination.js?v=20261014-prompt-compact-1"></script>
+    <script src="/album-organizer.js?v=20261014-prompt-compact-1"></script>
+    <script src="/gallery-tools.js?v=20261014-prompt-compact-1"></script>
+    <script src="/prompt-folders.js?v=20261014-prompt-compact-1"></script>
+    <script src="/creation-links.js?v=20261014-prompt-compact-1"></script>
+    <script src="/room-search.js?v=20261014-prompt-compact-1"></script>
+    <script src="/inspiration-presentation.js?v=20261016-contact-1"></script>
+    <script src="/inspiration-detail.js?v=20261021-lemo-1"></script>
+    <script src="/inspiration-nav.js?v=20261030-bag-3"></script>
+    <script src="/inspiration-compose.js?v=20261015-animation-cards-1"></script>
+    <script src="/inspiration-image-viewer.js?v=20261017-hover-550"></script>
+    <script src="/animation-request.js?v=20261021-lemo-1"></script>
+    <script src="/inspiration-browser.js?v=20261030-bag-3"></script>
+    <script src="/rooms.js?v=20261029-costume-1"></script>
+    <script src="/task-queue.js?v=20261019-queue-3"></script>
+    <script src="/material-bag.js?v=20261030-gallery-speed-1"></script>
+    <script src="/app.js?v=20261030-gallery-speed-1"></script>
+</body>
 </html>

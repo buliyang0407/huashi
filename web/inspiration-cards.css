@@ -1,0 +1,155 @@
+/* Shared library presentation. Source archives, detail viewers and creation pickers
+   keep their own behavior; only these explicit public card classes opt in. */
+.rooms-shell {
+  --inspiration-gap:18px;
+  --inspiration-radius:9px;
+  --inspiration-card-pad:14px;
+  --inspiration-title-size:13px;
+  --inspiration-summary-size:12px;
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration .inspiration-card-grid) {
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:var(--inspiration-gap);
+  align-items:stretch; max-width:none; column-count:auto;
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card {
+  display:flex; flex-direction:column; min-width:0; gap:0; margin:0; padding:0;
+  border:1px solid var(--line); border-radius:var(--inspiration-radius);
+  background:var(--surface,#fff); color:var(--ink); box-shadow:none;
+  overflow:hidden; text-align:left; transition:border-color .15s ease;
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card:hover {
+  transform:none; background:var(--surface,#fff); box-shadow:none; border-color:var(--line-strong,#ccd7df);
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card .inspiration-card-cover {
+  position:relative; display:block; flex:none; width:100%; height:auto; aspect-ratio:16/10;
+  margin:0; padding:0; border:0; border-bottom:1px solid var(--line);
+  border-radius:0; background:#eaf0f3; overflow:hidden; cursor:pointer;
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card-cover img {
+  display:block; width:100%; height:100%; object-fit:contain; transform:none; transition:none;
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card .inspiration-card-body {
+  display:flex; flex:1; flex-direction:column; align-items:stretch; gap:8px;
+  min-width:0; padding:var(--inspiration-card-pad);
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card .inspiration-card-meta {
+  display:block; width:auto; height:auto; min-height:16px; margin:0; padding:0;
+  color:var(--muted); font-size:10px; font-weight:400; line-height:1.6;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card .inspiration-card-title {
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  min-height:3.2em; margin:0; padding:0; overflow:hidden; overflow-wrap:anywhere;
+  white-space:normal; font-family:inherit; font-size:var(--inspiration-title-size); font-weight:550; line-height:1.6;
+}
+body .rooms-shell.phone-shell #promptList .inspiration-card-title .prompt-open-text {
+  display:block; font:inherit; line-height:inherit; text-align:left;
+  white-space:normal; padding:0; background:none; color:inherit; border:0; width:100%;
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card .inspiration-card-summary {
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+  height:5.1em; min-height:5.1em; margin:0; padding:0;
+  font-size:var(--inspiration-summary-size); font-weight:400; line-height:1.7;
+  color:var(--muted); white-space:normal; overflow:hidden; overflow-wrap:anywhere; text-overflow:clip;
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card .inspiration-card-tags {
+  display:flex; flex-wrap:wrap; align-items:flex-start; gap:4px; margin:0; padding:0;
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card-tags span {
+  display:inline-block; width:auto; height:auto; margin:0; padding:3px 6px; border:0; border-radius:4px;
+  background:var(--soft,#eef3f6); color:var(--ink-soft); font-size:10px; line-height:1.5;
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card .inspiration-card-actions {
+  display:flex; flex:none; flex-wrap:wrap; align-items:center; justify-content:flex-start;
+  gap:6px; min-height:48px; max-width:none; margin:0; margin-top:auto;
+  padding:8px var(--inspiration-card-pad); border-top:1px solid var(--line);
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card-actions :is(button,a,.tiny-button,.prompt-row-menu>summary) {
+  display:inline-flex; align-items:center; justify-content:center; min-height:30px;
+  width:auto; gap:4px; margin:0; padding:4px 0; border:0; border-radius:4px;
+  background:transparent; color:var(--accent-ink,#24546a); font:inherit; font-size:11px;
+  font-style:normal; line-height:1.5; text-decoration:none; cursor:pointer;
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card .inspiration-card-actions :is([data-favorite],[data-manage-prompt],[data-portrait-material],.prompt-row-menu) { margin-left:auto; }
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card-actions .animation-watch { padding-left:4px; }
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card :is(button,a,summary):focus-visible {
+  outline:2px solid var(--accent); outline-offset:-3px;
+}
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card .inspiration-text-cover {
+  display:flex; flex-direction:column; justify-content:center; align-items:flex-start; gap:10px;
+  width:100%; height:100%; padding:20px; text-align:left; background:#edf3f5; color:var(--accent-ink);
+}
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration) .inspiration-text-cover :is(small,.prompt-paper-label) { font-size:10px; font-weight:400; line-height:1.6; color:var(--muted); }
+body .rooms-shell.phone-shell :is(#promptList,#roomInspiration) .inspiration-text-cover :is(strong,.prompt-paper-title) {
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  font-size:18px; font-weight:550; line-height:1.6; overflow-wrap:anywhere;
+}
+body .rooms-shell.phone-shell #roomInspiration .inspiration-text-cover em { font-size:10px; font-style:normal; color:var(--muted); }
+body .rooms-shell.phone-shell #promptList .inspiration-card .prompt-sample.inspiration-text-cover { height:auto; }
+/* Prompt menus must escape the card. Other cards clip only their actual cover. */
+body .rooms-shell.phone-shell #promptList .inspiration-card { overflow:visible; }
+body .rooms-shell.phone-shell #promptList .inspiration-card-cover { border-radius:8px 8px 0 0; }
+body .rooms-shell.phone-shell #promptList .inspiration-card:has(.prompt-row-menu[open]) { position:relative; z-index:12; }
+body .rooms-shell.phone-shell #promptList .inspiration-card-actions .prompt-row-menu>div { bottom:34px; top:auto; }
+body .rooms-shell.phone-shell #promptList .inspiration-card-actions .prompt-row-menu>div button { justify-content:flex-start; padding:7px 10px; }
+body .rooms-shell.phone-shell #promptList .inspiration-card-actions .danger { color:#9a3d37; }
+body .rooms-shell.phone-shell #promptList .inspiration-card-actions .star-mark { display:none; }
+body .rooms-shell.phone-shell #promptList .inspiration-card .variant-list { margin:0; font-size:11px; }
+body .rooms-shell.phone-shell #promptList .inspiration-card .variant-card { padding:10px; }
+body .rooms-shell.phone-shell #promptList .inspiration-card .variant-card p { white-space:pre-wrap; overflow-wrap:anywhere; }
+body .rooms-shell.phone-shell #portraitMaterialGrid .inspiration-card.selected {
+  border-color:var(--accent); box-shadow:0 0 0 1px var(--accent);
+}
+body .rooms-shell.phone-shell #portraitMaterialGrid .portrait-preview-card { grid-column:1/-1; }
+body .rooms-shell.phone-shell #portraitMaterialGrid .portrait-skip-card {
+  display:flex; grid-column:1/-1; min-height:52px; gap:12px; padding:10px 14px;
+  border:1px dashed var(--line-strong); border-radius:var(--inspiration-radius); background:var(--surface-2); box-shadow:none;
+}
+body .rooms-shell.phone-shell #portraitMaterialGrid .portrait-skip-icon { width:auto; height:auto; background:none; color:var(--accent-ink); font-size:12px; }
+body .rooms-shell.phone-shell #portraitMaterialGrid .portrait-skip-card small { margin:0 0 0 auto; }
+body .rooms-shell.phone-shell #portraitMaterialGrid .inspiration-card .portrait-material-title { text-align:left; }
+body .rooms-shell.phone-shell #portraitMaterialGrid .inspiration-card :is(.portrait-material-image,.portrait-material-title)::after { pointer-events:none; }
+/* Shared page rhythm and pagination; workflow-specific controls stay in place. */
+body .rooms-shell.phone-shell #roomInspiration.inspiration-browser { padding:0 0 40px; margin:0; max-width:none; background:transparent; font-family:inherit; --ink:#20313f; --muted:#768591; --line:#e3e9ee; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-library-heading { margin:0 0 26px; align-items:flex-start; gap:16px; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-library-heading h2 { font-weight:550; font-family:inherit; font-size:31px; line-height:1.35; letter-spacing:.035em; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-library-intro { margin:12px 0 0; font-size:13px; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-library-heading .primary-button { min-height:38px; padding:7px 14px; font-size:12px; border-radius:8px; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-toolbar .search-box { max-width:390px; min-height:39px; border-radius:9px; }
+body .rooms-shell.phone-shell #promptPagination .huashi-pagination { border:0; margin:26px 0 0; padding:0; }
+body .rooms-shell.phone-shell #roomInspiration .pagination { justify-content:flex-end; gap:10px; font-size:11px; margin-top:26px; flex-wrap:wrap; }
+body .rooms-shell.phone-shell #roomInspiration .pagination label { display:inline-flex; align-items:center; gap:6px; width:auto; margin:0 auto 0 0; }
+body .rooms-shell.phone-shell #roomInspiration .pagination select { width:66px; min-height:32px; padding:4px 7px; font:inherit; }
+body .rooms-shell.phone-shell :is(#promptPagination,#roomInspiration .pagination,#portraitPagination) button { min-height:32px; padding:6px 12px; border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--ink-soft); font-size:11px; }
+body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid)>.empty-state { grid-column:1/-1; }
+@media(max-width:1100px) {
+  .rooms-shell { --inspiration-gap:14px; }
+  body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration .inspiration-card-grid) { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+/* The workbench reserves space for the selection flow and current choices. */
+body .rooms-shell.phone-shell #portraitMaterialGrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media(min-width:900px) and (max-width:1250px) {
+  body .rooms-shell.phone-shell .portrait-workbench { grid-template-columns:180px minmax(0,1fr); }
+  body .rooms-shell.phone-shell .portrait-summary-panel { grid-column:1/-1; position:static; max-height:none; }
+}
+@media(max-width:760px) {
+  .rooms-shell { --inspiration-gap:12px; --inspiration-card-pad:10px; }
+  body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration .inspiration-card-grid) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  body .rooms-shell.phone-shell :is(#promptList,#roomInspiration) .inspiration-card .inspiration-text-cover { padding:12px; gap:7px; }
+  body .rooms-shell.phone-shell :is(#promptList,#roomInspiration) .inspiration-text-cover :is(strong,.prompt-paper-title) { font-size:15px; }
+  body .rooms-shell.phone-shell #promptLibraryPanel .prompt-library-heading h2 { font-size:26px; }
+  body .rooms-shell.phone-shell #promptLibraryPanel .prompt-library-intro { font-size:12px; }
+  body .rooms-shell.phone-shell #promptLibraryPanel .prompt-library-heading .primary-button { padding:7px 10px; white-space:nowrap; font-size:11px; }
+  body .rooms-shell.phone-shell #promptLibraryPanel .prompt-toolbar .search-box { max-width:none; }
+  body .rooms-shell.phone-shell :is(#promptPagination,#roomInspiration .pagination) { font-size:11px; }
+}
+@media(max-width:360px) {
+  body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration .inspiration-card-grid) { grid-template-columns:minmax(0,1fr); }
+}
+@media(prefers-reduced-motion:reduce) {
+  body .rooms-shell.phone-shell :is(#promptList,#portraitMaterialGrid,#roomInspiration) .inspiration-card { transition:none; }
+}
+
+/* Respect the workbench disclosure controls even when its grid styles apply. */
+body .rooms-shell.phone-shell .portrait-workbench .hidden { display:none!important; }

@@ -1,0 +1,68 @@
+/* Personal prompt library: the same visual rhythm as image and animation cards.
+   Scope overrides here so creation pickers and the portrait workbench stay intact. */
+body .rooms-shell.phone-shell #promptLibraryPanel { display:block; }
+#promptLibraryPanel .prompt-library-heading { align-items:center; margin:8px 0 22px; }
+#promptLibraryPanel .prompt-library-intro { margin:8px 0 0; color:var(--muted); font-size:12px; line-height:1.7; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-directory-sidebar { border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:18px; background:#fff9; }
+#promptLibraryPanel .prompt-directory-heading { padding:0 0 8px; }
+#promptLibraryPanel .prompt-directory-tree { display:flex; flex-wrap:wrap; gap:10px 28px; max-height:300px; overflow:auto; }
+#promptLibraryPanel .prompt-directory-tree details { flex:0 1 250px; margin:0; min-width:0; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-directory-tree summary { padding:7px 0; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-directory-tree button { width:100%; padding:8px 12px; margin-top:3px; border-radius:6px; }
+#promptLibraryPanel .prompt-directory-tree button.active { box-shadow:none; background:var(--accent-wash,#e8f1f5); color:var(--accent-ink); }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-directory-status { margin-bottom:14px; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-toolbar { gap:14px; margin-bottom:12px; }
+body .rooms-shell.phone-shell #promptLibraryPanel .prompt-selection-tools { margin:0 0 10px; }
+body .rooms-shell.phone-shell #promptList { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; align-items:stretch; max-width:none; column-count:auto; }
+body .rooms-shell.phone-shell #promptList>.empty-state { grid-column:1/-1; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card { display:flex; flex-direction:column; min-width:0; gap:0; margin:0; padding:0; border:1px solid var(--line); border-radius:9px; background:white; box-shadow:none; overflow:visible; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card:hover { border-color:var(--line-strong); background:white; transform:none; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card:has(input[data-select-prompt]:checked) { outline:2px solid var(--accent); outline-offset:1px; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card:has(.prompt-row-menu[open]) { position:relative; z-index:12; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-sample { width:100%; height:auto; aspect-ratio:16/10; flex:none; margin:0; padding:0; border:0; border-bottom:1px solid var(--line); border-radius:8px 8px 0 0; background:#eaf0f3; cursor:pointer; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-sample img { display:block; width:100%; height:100%; object-fit:contain; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-sample.empty { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:12px; padding:20px; text-align:left; color:var(--accent-ink); background:#edf3f5; }
+#promptList .prompt-paper-label { font-size:10px; letter-spacing:.08em; color:var(--muted); }
+#promptList .prompt-paper-title { font-size:19px; font-weight:600; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; }
+#promptList .prompt-paper-rule { height:2px; width:26px; background:#8baab6; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-card-main { display:flex; flex-direction:column; align-items:stretch; gap:9px; padding:14px 14px 10px; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-card-main>strong { font-size:13px; line-height:1.5; white-space:normal; overflow:visible; }
+#promptList .prompt-grid-card .prompt-open-text { white-space:normal; overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-height:1.5; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-card-main>p { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; white-space:normal; overflow-wrap:anywhere; line-height:1.7; height:5.1em; font-size:12px; margin:0; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-card-main>small { font-size:10px; line-height:1.6; overflow-wrap:anywhere; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .tag-row { display:flex; flex-wrap:wrap; gap:4px; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .tag-row span { font-size:10px; padding:3px 6px; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .variant-list { margin:0; font-size:11px; }
+#promptList .prompt-grid-card .variant-list summary { cursor:pointer; }
+#promptList .prompt-grid-card .variant-card { min-width:0; }
+#promptList .prompt-grid-card .variant-card p { overflow-wrap:anywhere; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-card-actions { display:flex; flex-wrap:wrap; flex-direction:row; align-items:center; gap:6px; max-width:none; margin-top:auto; padding:10px 14px 12px; border-top:1px solid var(--line); }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-card-actions .tiny-button { padding:6px 8px; font-size:11px; }
+#promptList .prompt-grid-card .prompt-row-menu { margin-left:auto; }
+body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-row-menu>div { top:auto; bottom:34px; }
+#promptList .prompt-grid-card .prompt-folder-row-check { flex-basis:100%; padding-bottom:4px; }
+#promptList .prompt-grid-card .star-mark { font-size:10px; }
+#promptList .prompt-grid-card .prompt-sample:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+@media (max-width:1100px) {
+  body .rooms-shell.phone-shell #promptList { grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+}
+@media (max-width:760px) {
+  body .rooms-shell.phone-shell #promptList { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  #promptLibraryPanel .prompt-library-heading { gap:10px; margin-bottom:16px; align-items:flex-start; }
+  #promptLibraryPanel .prompt-library-heading .primary-button { padding:10px; font-size:11px; white-space:nowrap; }
+  #promptLibraryPanel .prompt-library-intro { font-size:11px; }
+  body .rooms-shell.phone-shell #promptLibraryPanel .prompt-directory-sidebar { padding:10px 12px; }
+  #promptLibraryPanel .prompt-directory-sidebar>details>summary { padding:3px 0; }
+  #promptLibraryPanel .prompt-directory-tree { gap:10px; }
+  #promptLibraryPanel .prompt-directory-tree details { flex-basis:100%; }
+  body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-sample.empty { gap:7px; padding:12px; }
+  #promptList .prompt-paper-title { font-size:15px; }
+  #promptList .prompt-paper-label { font-size:9px; }
+  body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-card-main { padding:11px 10px 9px; gap:7px; }
+  body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-card-actions { padding:9px 10px; gap:4px; }
+  body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-card-actions .tiny-button { padding:6px; font-size:10px; }
+  body .rooms-shell.phone-shell #promptList .prompt-grid-card .prompt-row-menu summary { padding:6px 4px; font-size:10px; }
+}
+@media (max-width:360px) {
+  body .rooms-shell.phone-shell #promptList { grid-template-columns:minmax(0,1fr); }
+}

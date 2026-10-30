@@ -1,7 +1,10 @@
 const adminState = {
   apps: [],
+  iconLibrary: [],
   editingId: "",
   clearCover: false,
+  clearIcon: false,
+  selectedIconPath: "",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -34,7 +37,7 @@ function renderList() {
 function appRow(app) {
   return `
     <div class="admin-row">
-      <span class="admin-row-thumb" style="${coverStyle(app)}"></span>
+      <span class="admin-row-thumb" style="${appVisualStyle(app)}"></span>
       <span>
         <strong>${escapeHtml(app.name)}${app.enabled ? "" : "（停用）"}</strong>
         <small>${escapeHtml(app.category)} · ${app.webapp_id}</small>
@@ -52,6 +55,8 @@ function editApp(id) {
   if (!app) return;
   adminState.editingId = app.id;
   adminState.clearCover = false;
+  adminState.clearIcon = false;
+  adminState.selectedIconPath = app.icon_path || "";
   $("formTitle").textContent = "编辑样式";
   $("styleId").value = app.id;
   $("sourceUrlInput").value = app.source_url || "";
@@ -71,6 +76,8 @@ function editApp(id) {
   $("favoriteInput").checked = Boolean(app.favorite);
   $("autoUnzipInput").checked = Boolean(app.auto_unzip);
   $("enabledInput").checked = Boolean(app.enabled);
+  $("iconInput").value = "";
+  updateIconPreview(app);
   renderInputsPreview();
   setNotice("");
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -90,6 +97,8 @@ async function deleteApp(id) {
 function resetForm() {
   adminState.editingId = "";
   adminState.clearCover = false;
+  adminState.clearIcon = false;
+  adminState.selectedIconPath = "";
   $("formTitle").textContent = "添加样式";
   $("styleForm").reset();
   $("styleId").value = "";
@@ -100,6 +109,8 @@ function resetForm() {
   $("enabledInput").checked = true;
   $("sampleInput").value = "";
   $("inputsInput").value = "";
+  $("iconInput").value = "";
+  updateIconPreview();
   renderInputsPreview();
   setNotice("");
 }
@@ -151,12 +162,83 @@ function formDataFromInputs() {
   const cover = $("coverInput").files[0];
   if (cover) formData.append("cover", cover);
   if (adminState.clearCover) formData.append("clear_cover", "1");
+  const icon = $("iconInput").files[0];
+  if (icon) formData.append("icon", icon);
+  if (adminState.selectedIconPath && !icon) formData.append("icon_path", adminState.selectedIconPath);
+  if (adminState.clearIcon) formData.append("clear_icon", "1");
   return formData;
 }
 
-function coverStyle(app) {
-  if (app.cover_url) return `background-image: url('${app.cover_url}')`;
-  return "background-image: url('/default-app-icon.png')";
+function appVisualUrl(app = {}) {
+  return app.icon_url || app.cover_url || "/default-app-icon.png";
+}
+
+function appVisualStyle(app = {}) {
+  return `background-image: url('${escapeAttr(appVisualUrl(app))}')`;
+}
+
+function updateIconPreview(app = {}) {
+  const preview = $("iconPreview");
+  const choice = $("iconChoiceText");
+  const selectedUrl = adminState.selectedIconPath ? `/files/${adminState.selectedIconPath}` : "";
+  const url = adminState.clearIcon ? "/default-app-icon.png" : selectedUrl || app.icon_url || "/default-app-icon.png";
+  preview.style.backgroundImage = `url('${escapeAttr(url)}')`;
+  if (adminState.clearIcon) {
+    choice.textContent = "保存后使用默认图标";
+  } else if (adminState.selectedIconPath) {
+    choice.textContent = `已选择：${adminState.selectedIconPath.split("/").pop()}`;
+  } else if (app.icon_path) {
+    choice.textContent = `当前图标：${app.icon_path.split("/").pop()}`;
+  } else {
+    choice.textContent = "未选择专用图标";
+  }
+}
+
+async function loadIconLibrary() {
+  const { items } = await api("/api/albums/items?folder_id=icons");
+  adminState.iconLibrary = items || [];
+  renderIconPicker();
+}
+
+async function openIconPicker() {
+  $("iconPicker").classList.remove("hidden");
+  $("iconPicker").setAttribute("aria-hidden", "false");
+  $("iconPickerGrid").innerHTML = `<div class="empty-state">正在读取图标库</div>`;
+  try {
+    await loadIconLibrary();
+  } catch (error) {
+    $("iconPickerGrid").innerHTML = `<div class="notice" data-kind="error">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function closeIconPicker() {
+  $("iconPicker").classList.add("hidden");
+  $("iconPicker").setAttribute("aria-hidden", "true");
+}
+
+function renderIconPicker() {
+  const items = adminState.iconLibrary;
+  $("iconPickerGrid").innerHTML = items.length
+    ? items.map((item) => `
+        <button class="icon-choice ${adminState.selectedIconPath === item.path ? "active" : ""}" type="button" data-icon-path="${escapeAttr(item.path)}">
+          <span style="background-image: url('${escapeAttr(item.url)}')"></span>
+          <strong>${escapeHtml(item.title || item.download_name || "图标")}</strong>
+        </button>
+      `).join("")
+    : `<div class="empty-state">图标库里还没有图片</div>`;
+  document.querySelectorAll("[data-icon-path]").forEach((button) => {
+    button.addEventListener("click", () => {
+      adminState.selectedIconPath = button.dataset.iconPath || "";
+      adminState.clearIcon = false;
+      $("iconInput").value = "";
+      updateIconPreview();
+      closeIconPicker();
+    });
+  });
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/`/g, "&#96;");
 }
 
 function setNotice(message, kind = "info") {
@@ -190,11 +272,31 @@ $("clearSampleButton").addEventListener("click", () => {
 $("useDefaultCoverButton").addEventListener("click", () => {
   adminState.clearCover = true;
   $("coverInput").value = "";
-  setNotice("保存后会使用默认图标。");
+  setNotice("保存后会清除样式封面。");
 });
 
 $("coverInput").addEventListener("change", () => {
   if ($("coverInput").files[0]) adminState.clearCover = false;
+});
+
+$("chooseIconButton").addEventListener("click", openIconPicker);
+$("closeIconPickerButton").addEventListener("click", closeIconPicker);
+$("iconPickerScrim").addEventListener("click", closeIconPicker);
+$("useDefaultIconButton").addEventListener("click", () => {
+  adminState.clearIcon = true;
+  adminState.selectedIconPath = "";
+  $("iconInput").value = "";
+  updateIconPreview();
+  setNotice("保存后会使用默认图标。");
+});
+
+$("iconInput").addEventListener("change", () => {
+  const file = $("iconInput").files[0];
+  if (!file) return;
+  adminState.clearIcon = false;
+  adminState.selectedIconPath = "";
+  $("iconPreview").style.backgroundImage = `url('${escapeAttr(URL.createObjectURL(file))}')`;
+  $("iconChoiceText").textContent = `待上传：${file.name}`;
 });
 
 $("inputsInput").addEventListener("input", renderInputsPreview);

@@ -1,0 +1,16 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const ctx={window:{},URL};
+if(fs.existsSync('web/animation-request.js'))vm.runInNewContext(fs.readFileSync('web/animation-request.js','utf8'),ctx);
+assert.equal(typeof ctx.window.HuashiAnimationRequest?.buildRequest,'function','需要新增独立短片请求构建器');
+const build=ctx.window.HuashiAnimationRequest.buildRequest;
+const entry={id:'animation:lemo:style:watercolor',domain:'animation',title:'水彩笔刷',source_revision:'fixed-commit',source_urls:['https://github.com/lemomo-ai/lemo-opuscar/blob/fixed/styles/watercolor/STYLE.md','javascript:alert(1)'],prompts:{original:'raw <script> reference\nDo not upload secrets'},media:[{label:'我们的试片《一叶入杯》',availability:'local',url:'/inspiration-media/test/previews/tea.mp4'}]};
+const input={entry,theme:'杭州西湖的四季',duration:30,ratio:'16:9',voice:'auto',music:'auto',materials:'用自己的风景照片',storyboard:true,origin:'http://localhost:18896'};
+const text=build(input);
+for(const s of ['杭州西湖的四季','30 秒','16:9','中文配音','音乐','先给我分镜','raw <script> reference','仅作为参考材料','fixed-commit','我们的试片《一叶入杯》','http://localhost:18896/inspiration-media/test/previews/tea.mp4','DIRECTOR.md','TECHNIQUE.md'])assert.ok(text.includes(s),s);
+assert.ok(!text.includes('javascript:'));assert.ok(!text.includes('生图提示词'));
+assert.throws(()=>build({...input,theme:' '}));
+for(const duration of [0,-1,181,5.5,'abc',Infinity])assert.throws(()=>build({...input,duration}));
+assert.throws(()=>build({...input,ratio:'1:99'}));assert.throws(()=>build({...input,entry:{domain:'image'}}));
+assert.ok(build({...input,voice:'none',music:'none',storyboard:false}).includes('无旁白'));
+assert.ok(build({...input,voice:'own',music:'own'}).includes('使用我提供的'));
+console.log('Animation request: provenance, complete brief, media reference and validation passed');

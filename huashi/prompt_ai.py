@@ -59,10 +59,11 @@ class PromptModel:
 
 
 PROMPT_MODELS = [
-    PromptModel("ollama-qwen-vl", "快速稳定：qwen3-vl:8b-instruct", "ollama", "qwen3-vl:8b-instruct", True),
+    PromptModel("aihubmix-grok", "Grok4.1", "aihubmix", "grok-4-1-fast-non-reasoning", True),
+    PromptModel("ollama-qwen-vl", "快速稳定：qwen3-vl:8b-instruct", "ollama", "qwen3-vl:8b-instruct"),
     PromptModel("ollama-qwen-9b", "高质量：qwen3.5:9b", "ollama", "qwen3.5:9b"),
     PromptModel("ollama-qwen-4b", "本地备选：qwen3.5-uncensored:4b", "ollama", "jaahas/qwen3.5-uncensored:4b"),
-    PromptModel("aihubmix-grok", "第三方：grok-4.3", "aihubmix", "grok-4.3"),
+    PromptModel("aihubmix-qwen-max", "第三方备用：qwen3.7-max", "aihubmix", "qwen3.7-max"),
 ]
 
 
@@ -227,9 +228,22 @@ def read_sse_json_lines(
         yield {"type": "done", "candidates": split_candidates(text), "text": text}
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
-        raise PromptAIError(f"模型接口返回错误：{exc.code} {body[:300]}") from exc
+        raise PromptAIError(f"模型接口返回错误：{exc.code} {aihubmix_error_message(body)}") from exc
     except (urllib.error.URLError, TimeoutError) as exc:
         raise PromptAIError("无法连接模型接口：" + str(exc)) from exc
+
+
+def aihubmix_error_message(body: str) -> str:
+    if "this key is not enabled" in body:
+        return "AIHubMix 已收到密钥，但这把 key 没有开通当前模型权限；请在 AIHubMix 后台启用对应模型，或先切换到第三方备用 qwen3.7-max。"
+    try:
+        payload = json.loads(body or "{}")
+        message = ((payload.get("error") or {}).get("message") or "").strip()
+        if message:
+            return message[:300]
+    except json.JSONDecodeError:
+        pass
+    return body[:300]
 
 
 def token_from_ollama_chunk(chunk: dict[str, Any]) -> str:
